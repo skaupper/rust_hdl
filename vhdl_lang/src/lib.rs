@@ -16,7 +16,7 @@ extern crate self as vhdl_lang;
 pub mod ast;
 #[macro_use]
 mod analysis;
-mod api;
+pub mod api;
 mod config;
 mod data;
 mod lint;
@@ -33,6 +33,7 @@ pub use crate::data::{
 };
 
 pub use crate::analysis::EntHierarchy;
+pub use crate::analysis::DesignRoot;
 pub use crate::named_entity::{
     AnyEnt, AnyEntKind, Concurrent, Design, EntRef, EntityId, HasEntityId, Object, Overloaded,
     Related, Sequential, Type,

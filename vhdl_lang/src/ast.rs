@@ -13,7 +13,7 @@ mod display;
 mod util;
 
 #[macro_use]
-mod any_design_unit;
+pub mod any_design_unit;
 
 #[macro_use]
 pub mod search;

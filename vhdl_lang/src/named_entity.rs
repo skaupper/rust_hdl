@@ -320,6 +320,10 @@ impl<'a> AnyEnt<'a> {
         )
     }
 
+    pub fn is_library(&self) -> bool {
+        matches!(self.kind, AnyEntKind::Library)
+    }
+
     pub fn is_declared_by(&self, other: EntRef) -> bool {
         if let Related::DeclaredBy(ent) = self.related {
             if ent.id() == other.id() {

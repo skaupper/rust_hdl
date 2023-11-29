@@ -23,7 +23,7 @@ use std::ops::DerefMut;
 use std::sync::Arc;
 
 /// A design unit with design unit data
-pub(crate) struct AnalysisData {
+pub struct AnalysisData {
     pub diagnostics: Vec<Diagnostic>,
     pub has_circular_dependency: bool,
     pub arena: FinalArena,
@@ -34,7 +34,7 @@ pub(super) type UnitWriteGuard<'a> = WriteGuard<'a, AnyDesignUnit, AnalysisData>
 
 /// Wraps the AST of a [design unit](../../ast/enum.AnyDesignUnit.html) in a thread-safe
 /// r/w-lock for analysis.
-pub(crate) struct LockedUnit {
+pub struct LockedUnit {
     ident: Ident,
     arena_id: ArenaId,
     unit_id: UnitId,
@@ -246,7 +246,7 @@ impl Library {
         result
     }
 
-    pub(crate) fn get_unit(&self, key: &UnitKey) -> Option<&LockedUnit> {
+    pub fn get_unit(&self, key: &UnitKey) -> Option<&LockedUnit> {
         self.units.get(key)
     }
 
@@ -272,8 +272,22 @@ impl Library {
         })
     }
 
+    pub(crate) fn secondary_units_by_id(
+        &self,
+        primary_id: usize,
+    ) -> impl Iterator<Item = &LockedUnit> {
+        self.units.iter().filter_map(move |(key, value)| match key {
+            UnitKey::Secondary(sym, _) if primary_id == sym.id => Some(value),
+            _ => None,
+        })
+    }
+
     pub(crate) fn primary_unit(&self, symbol: &Symbol) -> Option<&LockedUnit> {
         self.units.get(&UnitKey::Primary(symbol.clone()))
+    }
+
+    pub fn units<'a>(&'a self) -> impl Iterator<Item = &'a LockedUnit> + 'a {
+        self.units.values()
     }
 }
 
@@ -754,7 +768,7 @@ impl DesignRoot {
         }
     }
 
-    pub(super) fn get_unit<'a>(&'a self, unit_id: &UnitId) -> Option<&'a LockedUnit> {
+    pub fn get_unit<'a>(&'a self, unit_id: &UnitId) -> Option<&'a LockedUnit> {
         self.libraries
             .get(unit_id.library_name())
             .and_then(|library| library.units.get(unit_id.key()))
@@ -928,7 +942,7 @@ impl DesignRoot {
         }
     }
 
-    fn analyze_standard_package(&mut self) {
+    pub fn analyze_standard_package(&mut self) {
         // Analyze standard package first if it exits
         let std_lib_name = self.symbol_utf8("std");
         let Some(standard_units) = self

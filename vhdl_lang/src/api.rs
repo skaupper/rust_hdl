@@ -43,6 +43,12 @@ pub struct Root<'a> {
     root: &'a DesignRoot,
 }
 
+impl<'a> Root<'a> {
+    pub fn new(root: &'a DesignRoot) -> Self {
+        Root { root }
+    }
+}
+
 pub struct Library<'a> {
     library: &'a crate::analysis::Library,
 }
@@ -62,10 +68,14 @@ impl<'a> Root<'a> {
             library: self.root.get_lib(name)?,
         })
     }
+
+    pub fn libraries(&self) -> impl Iterator<Item = Library<'a>> {
+        self.root.libraries().map(|l| Library { library: l })
+    }
 }
 
 impl<'a> Library<'a> {
-    pub fn primary_units(&self) -> impl Iterator<Item = Primary<'a>> {
+    pub fn primary_units(self) -> impl Iterator<Item = Primary<'a>> {
         self.library.primary_units().map(|unit| Primary {
             library: self.library,
             unit: unit.unit.expect_analyzed(),
@@ -78,6 +88,10 @@ impl<'a> Library<'a> {
             unit: unit.unit.expect_analyzed(),
         })
     }
+
+    pub fn name(&self) -> String {
+        self.library.name().name_utf8()
+    }
 }
 
 impl<'a> Primary<'a> {
@@ -88,14 +102,32 @@ impl<'a> Primary<'a> {
         }
     }
 
-    pub fn secondary_units(&'a self) -> impl Iterator<Item = Secondary<'a>> {
+    pub fn name(&self) -> String {
+        match self.get() {
+            AnyPrimaryUnit::Entity(ent) => ent.ident.to_string(),
+            AnyPrimaryUnit::Package(pack) => pack.ident.to_string(),
+            AnyPrimaryUnit::Context(ctx) => ctx.ident.to_string(),
+            x => format!("{:?}", x),
+        }
+    }
+
+    pub fn secondary_units(self) -> impl Iterator<Item = Secondary<'a>> {
         use crate::ast::HasIdent;
         self.library
-            .secondary_units(self.unit.data().name())
+            .secondary_units_by_id(self.unit.data().name().id)
             .map(|unit| Secondary {
                 unit: unit.unit.expect_analyzed(),
             })
     }
+
+   //  pub fn name(&self) -> String {
+   //      match self.get() {
+   //          AnyPrimaryUnit::Package(p) => p.ident.to_string(),
+   //          AnyPrimaryUnit::Entity(e) => e.ident.to_string(),
+   //          AnyPrimaryUnit::Context(c) => c.ident.to_string(),
+   //          _ => "<not implemented>".to_string(),
+   //      }
+   //  }
 }
 
 impl<'a> Secondary<'a> {

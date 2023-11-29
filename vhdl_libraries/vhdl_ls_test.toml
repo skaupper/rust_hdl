@@ -1,0 +1,4 @@
+[libraries]
+ieee.files = [
+'ieee2008/numeric_std.vhdl',
+]

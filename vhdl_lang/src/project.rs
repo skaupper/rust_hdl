@@ -5,6 +5,7 @@
 // Copyright (c) 2018, Olof Kraigher olof.kraigher@gmail.com
 
 use crate::analysis::DesignRoot;
+use crate::api::Root;
 use crate::ast::DesignFile;
 use crate::completion::{list_completion_options, CompletionItem};
 use crate::config::Config;
@@ -36,6 +37,10 @@ impl Project {
             lint: None,
             config: Config::default(),
         }
+    }
+
+    pub fn to_api_root(&self) -> Root {
+        Root::new(&self.root)
     }
 
     pub fn enable_unused_declaration_detection(&mut self) {

@@ -15,7 +15,7 @@ use crate::syntax::Symbols;
 use super::analyze::AnalyzeContext;
 use crate::named_entity::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct UniversalTypes {
     pub integer: EntityId,
     pub real: EntityId,
