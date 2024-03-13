@@ -16,9 +16,9 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use vhdl_lang::{
-    kind_str, AnyEntKind, Concurrent, Config, Design, Diagnostic, EntHierarchy, EntRef, EntityId,
-    InterfaceEnt, Message, MessageHandler, Object, Overloaded, Project, Severity, Source, SrcPos,
-    Token, Type,
+    kind_str, AnalyzedProject, AnyEntKind, Concurrent, Config, Design, Diagnostic, EntHierarchy,
+    EntRef, EntityId, InterfaceEnt, Message, MessageHandler, Object, Overloaded, Severity, Source,
+    SrcPos, Token, Type,
 };
 
 #[derive(Default, Clone)]
@@ -32,7 +32,7 @@ pub struct VHDLServer {
     settings: VHDLServerSettings,
     // To have well defined unit tests that are not affected by environment
     use_external_config: bool,
-    project: Project,
+    project: AnalyzedProject,
     files_with_notifications: FnvHashMap<Url, ()>,
     init_params: Option<InitializeParams>,
     config_file: Option<PathBuf>,
@@ -44,7 +44,7 @@ impl VHDLServer {
             rpc,
             settings,
             use_external_config: true,
-            project: Project::new(),
+            project: AnalyzedProject::default(),
             files_with_notifications: FnvHashMap::default(),
             init_params: None,
             config_file: None,
@@ -57,7 +57,7 @@ impl VHDLServer {
             rpc,
             settings: Default::default(),
             use_external_config,
-            project: Project::new(),
+            project: AnalyzedProject::default(),
             files_with_notifications: FnvHashMap::default(),
             init_params: None,
             config_file: None,
@@ -116,8 +116,10 @@ impl VHDLServer {
     pub fn initialize_request(&mut self, init_params: InitializeParams) -> InitializeResult {
         self.config_file = self.root_uri_config_file(&init_params);
         let config = self.load_config();
-        self.project = Project::from_config(config, &mut self.message_filter());
-        self.project.enable_unused_declaration_detection();
+
+        self.project
+            .update_config(config, &mut self.message_filter());
+
         self.init_params = Some(init_params);
         let trigger_chars: Vec<String> = r".".chars().map(|ch| ch.to_string()).collect();
 
@@ -221,7 +223,7 @@ impl VHDLServer {
                 let range = content_change.range.map(from_lsp_range);
                 source.change(range.as_ref(), &content_change.text);
             }
-            self.project.update_source(&source);
+            self.project.add_or_update_source(&source);
             self.publish_diagnostics();
         } else {
             self.message(Message::error(format!(
@@ -236,7 +238,7 @@ impl VHDLServer {
         let file_name = uri_to_file_name(uri);
         if let Some(source) = self.project.get_source(&file_name) {
             source.change(None, text);
-            self.project.update_source(&source);
+            self.project.add_or_update_source(&source);
             self.publish_diagnostics();
         } else {
             self.message(Message::warning(format!(
@@ -244,7 +246,7 @@ impl VHDLServer {
                 file_name.to_string_lossy()
             )));
             self.project
-                .update_source(&Source::inline(&file_name, text));
+                .add_or_update_source(&Source::inline(&file_name, text));
             self.publish_diagnostics();
         }
     }
@@ -484,7 +486,7 @@ impl VHDLServer {
     }
 
     fn publish_diagnostics(&mut self) {
-        let diagnostics = self.project.analyse();
+        let diagnostics = self.project.diagnostics().clone();
 
         if self.settings.no_lint {
             return;

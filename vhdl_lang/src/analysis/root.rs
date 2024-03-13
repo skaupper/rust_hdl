@@ -14,6 +14,7 @@ use crate::ast::search::*;
 use crate::ast::*;
 use crate::data::*;
 use crate::syntax::{Symbols, Token, TokenAccess};
+use crate::SourceFile;
 use fnv::{FnvHashMap, FnvHashSet};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
@@ -398,6 +399,17 @@ impl DesignRoot {
     pub fn add_design_file(&mut self, library_name: Symbol, design_file: DesignFile) {
         self.get_or_create_library(library_name)
             .add_design_file(design_file);
+    }
+
+    pub fn add_source_file(&mut self, source_file: &mut SourceFile) {
+        let design_file = source_file.take_design_file();
+
+        // Associate the DesignFile with each library it is referenced in
+        let mut design_files = multiply(design_file, source_file.library_names.len());
+        for library_name in source_file.library_names.iter() {
+            let design_file = design_files.pop().unwrap();
+            self.add_design_file(library_name.clone(), design_file);
+        }
     }
 
     pub fn remove_source(&mut self, library_name: Symbol, source: &Source) {
@@ -1276,6 +1288,23 @@ fn public_symbols<'a>(ent: EntRef<'a>) -> Box<dyn Iterator<Item = EntRef<'a>> + 
             _ => Box::new(std::iter::empty()),
         },
         _ => Box::new(std::iter::empty()),
+    }
+}
+
+/// Multiply clonable value by cloning
+/// Avoid clone for n=1
+fn multiply<T: Clone>(value: T, n: usize) -> Vec<T> {
+    if n == 0 {
+        vec![]
+    } else if n == 1 {
+        vec![value]
+    } else {
+        let mut res = Vec::with_capacity(n);
+        for _ in 0..n - 1 {
+            res.push(value.clone());
+        }
+        res.push(value);
+        res
     }
 }
 

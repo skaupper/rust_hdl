@@ -8,7 +8,7 @@ use brunch::{Bench, Benches};
 use std::{path::Path, time::Duration};
 use vhdl_lang::{
     ast::search::{SearchState, Searcher},
-    Config, MessagePrinter, NullMessages, Project,
+    Config, MessagePrinter, NullMessages, SourceProject,
 };
 
 fn load_config(include_example_project: bool) -> Config {
@@ -40,14 +40,16 @@ fn main() {
         // is very big with the example project
         let config = load_config(false);
         benches.push(Bench::new("parse and analyze").with_samples(10).run(|| {
-            let mut project = Project::from_config(config.clone(), &mut NullMessages);
-            project.analyse();
+            let _project = SourceProject::from_config(config.clone())
+                .parse(&mut NullMessages)
+                .analyze(false);
         }));
     }
 
     {
-        let mut project = Project::from_config(load_config(true), &mut NullMessages);
-        project.analyse();
+        let project = SourceProject::from_config(load_config(true))
+            .parse(&mut NullMessages)
+            .analyze(false);
 
         let integer = project
         .public_symbols()

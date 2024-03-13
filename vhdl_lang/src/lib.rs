@@ -13,7 +13,6 @@ extern crate self as vhdl_lang;
 pub mod ast;
 #[macro_use]
 mod analysis;
-mod api;
 mod config;
 mod data;
 mod lint;
@@ -22,6 +21,8 @@ mod project;
 mod syntax;
 
 mod completion;
+
+pub mod api;
 
 pub use crate::config::Config;
 pub use crate::data::{
@@ -35,7 +36,8 @@ pub use crate::named_entity::{
     Overloaded, Reference, Related, Sequential, Type,
 };
 
-pub use crate::project::{Project, SourceFile};
+pub use crate::api::{AnalyzedProject, ParsedProject, SourceProject};
+pub use crate::project::SourceFile;
 pub use crate::syntax::{
     kind_str, HasTokenSpan, ParserResult, Token, TokenAccess, TokenId, TokenSpan, VHDLParser,
 };

@@ -7,7 +7,7 @@
 use clap::Parser;
 use std::path::Path;
 use std::time::SystemTime;
-use vhdl_lang::{Config, Diagnostic, MessagePrinter, NullMessages, Project, Severity};
+use vhdl_lang::{Config, Diagnostic, MessagePrinter, NullMessages, Severity, SourceProject};
 
 /// Run vhdl analysis
 #[derive(Parser, Debug)]
@@ -65,16 +65,19 @@ fn main() {
         let iterations = 10;
         println!("Running {iterations} iterations for benchmarking");
         for _ in 0..(iterations - 1) {
-            let mut project = Project::from_config(config.clone(), &mut NullMessages);
-            project.analyse();
+            let _project = SourceProject::from_config(config.clone())
+                .parse(&mut NullMessages)
+                .analyze(false);
         }
         iterations
     } else {
         1
     };
 
-    let mut project = Project::from_config(config, &mut msg_printer);
-    let mut diagnostics = project.analyse();
+    let project = SourceProject::from_config(config)
+        .parse(&mut msg_printer)
+        .analyze(false);
+    let mut diagnostics = project.diagnostics().clone();
     let duration = start.elapsed().unwrap() / iterations;
 
     if args.no_hint {

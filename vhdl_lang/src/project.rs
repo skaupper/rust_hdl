@@ -351,14 +351,14 @@ impl Default for Project {
 }
 
 pub struct SourceFile {
-    library_names: FnvHashSet<Symbol>,
-    source: Source,
-    design_file: DesignFile,
-    parser_diagnostics: Vec<Diagnostic>,
+    pub(crate) library_names: FnvHashSet<Symbol>,
+    pub(crate) source: Source,
+    pub(crate) design_file: DesignFile,
+    pub(crate) parser_diagnostics: Vec<Diagnostic>,
 }
 
 impl SourceFile {
-    fn take_design_file(&mut self) -> DesignFile {
+    pub(crate) fn take_design_file(&mut self) -> DesignFile {
         std::mem::take(&mut self.design_file)
     }
 
