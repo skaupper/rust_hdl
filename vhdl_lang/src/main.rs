@@ -67,7 +67,7 @@ fn main() {
         for _ in 0..(iterations - 1) {
             let _project = SourceProject::from_config(config.clone())
                 .parse(&mut NullMessages)
-                .analyze(false);
+                .analyze();
         }
         iterations
     } else {
@@ -76,7 +76,7 @@ fn main() {
 
     let project = SourceProject::from_config(config)
         .parse(&mut msg_printer)
-        .analyze(false);
+        .analyze();
     let mut diagnostics = project.diagnostics().clone();
     let duration = start.elapsed().unwrap() / iterations;
 

@@ -268,3 +268,303 @@ impl AnalyzedProject {
         self.format_declaration(ent)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::syntax::test::check_no_diagnostics;
+
+    // TODO: Check which files are in the project and which library they are associated with!
+
+    /// Test that an empty library is created
+    /// Thus test case was added when fixing a bug
+    /// Where a library with no files was never added
+    #[test]
+    fn test_empty_library_is_defined() {
+        let root = tempfile::tempdir().unwrap();
+        let vhdl_file_path = root.path().join("file.vhd");
+        std::fs::write(
+            vhdl_file_path,
+            "
+library missing;
+
+entity ent is
+end entity;
+        ",
+        )
+        .unwrap();
+
+        let config_str = "
+[libraries]
+missing.files = []
+lib.files = ['file.vhd']
+        ";
+
+        let config = Config::from_str(config_str, root.path()).unwrap();
+        let mut messages = Vec::new();
+        let project = SourceProject::from_config(config)
+            .parse(&mut messages)
+            .analyze();
+        assert_eq!(messages, vec![]);
+        check_no_diagnostics(project.diagnostics());
+    }
+
+    #[test]
+    fn unmapped_libraries_are_analyzed() {
+        let mut messages = Vec::new();
+        let mut project = SourceProject::from_config(Config::default())
+            .parse(&mut messages)
+            .analyze();
+        assert_eq!(messages, vec![]);
+        check_no_diagnostics(project.diagnostics());
+
+        let root = tempfile::tempdir().unwrap();
+        let vhdl_file_path = root.path().join("file.vhd");
+        std::fs::write(
+            &vhdl_file_path,
+            "
+entity ent is
+end ent;
+
+architecture rtl of ent is
+begin
+end architecture;
+
+architecture rtl of ent is
+begin
+end architecture;
+",
+        )
+        .unwrap();
+        let source = Source::from_latin1_file(&vhdl_file_path).unwrap();
+
+        project.add_or_update_source(&source);
+        let diagnostics = project.diagnostics();
+        assert_eq!(diagnostics.len(), 1);
+        let diag = diagnostics.first().unwrap();
+        assert_eq!(diag.message, "Duplicate architecture 'rtl' of entity 'ent'")
+    }
+
+    /// Test that the same file can be added to several libraries
+    #[test]
+    fn test_same_file_in_multiple_libraries() {
+        let root = tempfile::tempdir().unwrap();
+        let vhdl_file_path1 = root.path().join("file.vhd");
+        std::fs::write(
+            vhdl_file_path1,
+            "
+package pkg is
+end package;
+        ",
+        )
+        .unwrap();
+
+        let vhdl_file_path2 = root.path().join("use_file.vhd");
+        std::fs::write(
+            vhdl_file_path2,
+            "
+library lib1;
+use lib1.pkg.all;
+
+package use_pkg1 is
+end package;
+
+library lib2;
+use lib2.pkg.all;
+
+package use_pkg2 is
+end package;
+        ",
+        )
+        .unwrap();
+
+        let config_str = "
+[libraries]
+lib1.files = ['file.vhd']
+lib2.files = ['file.vhd']
+use_lib.files = ['use_file.vhd']
+        ";
+
+        let config = Config::from_str(config_str, root.path()).unwrap();
+        let mut messages = Vec::new();
+        let project = SourceProject::from_config(config)
+            .parse(&mut messages)
+            .analyze();
+        assert_eq!(messages, vec![]);
+        check_no_diagnostics(project.diagnostics());
+    }
+
+    fn update(project: &mut AnalyzedProject, source: &mut Source, contents: &str) {
+        std::fs::write(Path::new(source.file_name()), contents).unwrap();
+        *source = Source::from_latin1_file(source.file_name()).unwrap();
+        project.add_or_update_source(source);
+    }
+
+    /// Test that the same file can be added to several libraries
+    #[test]
+    fn test_re_analyze_after_update() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let root = dunce::canonicalize(tempdir.path()).unwrap();
+
+        let path1 = root.join("file1.vhd");
+        let path2 = root.join("file2.vhd");
+        std::fs::write(
+            &path1,
+            "
+package pkg is
+end package;
+        ",
+        )
+        .unwrap();
+        let mut source1 = Source::from_latin1_file(&path1).unwrap();
+
+        std::fs::write(
+            &path2,
+            "
+library lib1;
+use lib1.pkg.all;
+
+package pkg is
+end package;
+        ",
+        )
+        .unwrap();
+        let mut source2 = Source::from_latin1_file(&path2).unwrap();
+
+        let config_str = "
+[libraries]
+lib1.files = ['file1.vhd']
+lib2.files = ['file2.vhd']
+        ";
+
+        let config = Config::from_str(config_str, &root).unwrap();
+        let mut messages = Vec::new();
+        let mut project = SourceProject::from_config(config)
+            .parse(&mut messages)
+            .analyze();
+        assert_eq!(messages, vec![]);
+        check_no_diagnostics(project.diagnostics());
+
+        // Add syntax error
+        update(
+            &mut project,
+            &mut source1,
+            "
+package is
+        ",
+        );
+        let diagnostics = project.diagnostics();
+        assert_eq!(diagnostics.len(), 3);
+        // Syntax error comes first
+        assert_eq!(diagnostics[0].pos.source, source1);
+        assert_eq!(diagnostics[1].pos.source, source1);
+        assert_eq!(diagnostics[2].pos.source, source2);
+
+        // Make it good again
+        update(
+            &mut project,
+            &mut source1,
+            "
+package pkg is
+end package;
+        ",
+        );
+        check_no_diagnostics(project.diagnostics());
+
+        // Add analysis error
+        update(
+            &mut project,
+            &mut source2,
+            "
+package pkg is
+end package;
+
+package pkg is
+end package;
+        ",
+        );
+        let diagnostics = project.diagnostics();
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].pos.source, source2);
+
+        // Make it good again
+        update(
+            &mut project,
+            &mut source2,
+            "
+package pkg is
+end package;
+        ",
+        );
+        check_no_diagnostics(project.diagnostics());
+    }
+
+    /// Test that the configuration can be updated
+    #[test]
+    fn test_config_update() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let root = dunce::canonicalize(tempdir.path()).unwrap();
+
+        let path1 = root.join("file1.vhd");
+        let path2 = root.join("file2.vhd");
+        std::fs::write(
+            &path1,
+            "
+library unkown;
+use unkown.pkg.all;
+
+package pkg is
+end package;
+        ",
+        )
+        .unwrap();
+        let source1 = Source::from_latin1_file(&path1).unwrap();
+
+        std::fs::write(
+            &path2,
+            "
+library unkown;
+use unkown.pkg.all;
+
+package pkg is
+end package;
+        ",
+        )
+        .unwrap();
+        let source2 = Source::from_latin1_file(&path2).unwrap();
+
+        let config_str1 = "
+[libraries]
+lib.files = ['file1.vhd']
+        ";
+        let config1 = Config::from_str(config_str1, &root).unwrap();
+
+        let config_str2 = "
+[libraries]
+lib.files = ['file2.vhd']
+        ";
+        let config2 = Config::from_str(config_str2, &root).unwrap();
+
+        let mut messages = Vec::new();
+        let mut project = SourceProject::from_config(config1)
+            .parse(&mut messages)
+            .analyze();
+        assert_eq!(messages, vec![]);
+
+        // Invalid library should only be reported in source1
+        let diagnostics = project.diagnostics();
+        assert_eq!(diagnostics.len(), 2);
+        assert_eq!(diagnostics[0].pos.source, source1); // No such library
+        assert_eq!(diagnostics[1].pos.source, source1); // No declaration
+
+        // Change configuration file
+        project.update_config(config2, &mut messages);
+        assert_eq!(messages, vec![]);
+
+        // Invalid library should only be reported in source2
+        let diagnostics = project.diagnostics();
+        assert_eq!(diagnostics.len(), 2);
+        assert_eq!(diagnostics[0].pos.source, source2); // No such library
+        assert_eq!(diagnostics[1].pos.source, source2); // No declaration
+    }
+}
