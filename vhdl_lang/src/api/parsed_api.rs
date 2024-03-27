@@ -9,7 +9,10 @@ use std::path::PathBuf;
 use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::{
-    ast::{AnyDesignUnit, AnyPrimaryUnit, EntityDeclaration, PackageDeclaration},
+    ast::{
+        AnyDesignUnit, AnyPrimaryUnit, Declaration, EntityDeclaration, PackageDeclaration,
+        PackageInstantiation, SubprogramDeclaration,
+    },
     data::{FilePath, Symbol},
     SourceFile,
 };
@@ -28,14 +31,22 @@ pub struct ParsedLibrary<'a> {
     files: FnvHashMap<&'a FilePath, &'a SourceFile>,
 }
 
+pub struct ParsedPackage<'a> {
+    package_decl: &'a PackageDeclaration,
+}
+
 impl<'a> ParsedApiRoot<'a> {
-    pub fn iter_files(&self) -> impl Iterator<Item = ParsedFile> + 'a {
+    pub fn iter_files(&self) -> impl Iterator<Item = ParsedFile<'a>> {
         self.parsed_files
             .iter()
             .map(|(file_path, source_file)| ParsedFile {
                 file_path,
                 source_file,
             })
+    }
+
+    pub fn iter_packages(&self) -> impl Iterator<Item = ParsedPackage<'a>> + 'a {
+        self.iter_files().flat_map(|f| f.iter_packages())
     }
 
     pub fn library(&self, library_name: &str) -> Option<ParsedLibrary<'a>> {
@@ -87,7 +98,6 @@ impl<'a> ParsedFile<'a> {
             .collect()
     }
 
-
     pub fn iter_design_units(&self) -> impl Iterator<Item = &'a AnyDesignUnit> {
         self.source_file
             .design_file
@@ -103,9 +113,11 @@ impl<'a> ParsedFile<'a> {
         })
     }
 
-    pub fn iter_packages(&self) -> impl Iterator<Item = &'a PackageDeclaration> {
+    pub fn iter_packages(&self) -> impl Iterator<Item = ParsedPackage<'a>> {
         self.iter_design_units().filter_map(|du| match du {
-            AnyDesignUnit::Primary(AnyPrimaryUnit::Package(ent)) => Some(ent),
+            AnyDesignUnit::Primary(AnyPrimaryUnit::Package(ent)) => {
+                Some(ParsedPackage { package_decl: ent })
+            }
             _ => None,
         })
     }
@@ -139,5 +151,18 @@ impl<'a> ParsedLibrary<'a> {
                 file_path,
                 source_file,
             })
+    }
+}
+
+impl<'a> ParsedPackage<'a> {
+    pub fn name(&self) -> String {
+        self.package_decl.to_string()
+    }
+
+    pub fn iter_subprograms(&'a self) -> impl Iterator<Item = &'a SubprogramDeclaration> + 'a {
+        self.package_decl.decl.iter().filter_map(|decl| match decl {
+            Declaration::SubprogramDeclaration(sub_decl) => Some(sub_decl),
+            _ => None,
+        })
     }
 }

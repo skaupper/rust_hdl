@@ -42,14 +42,14 @@ fn main() {
         benches.push(Bench::new("parse and analyze").with_samples(10).run(|| {
             let _project = SourceProject::from_config(config.clone())
                 .parse(&mut NullMessages)
-                .analyze(false);
+                .analyze();
         }));
     }
 
     {
         let project = SourceProject::from_config(load_config(true))
             .parse(&mut NullMessages)
-            .analyze(false);
+            .analyze();
 
         let integer = project
         .public_symbols()
