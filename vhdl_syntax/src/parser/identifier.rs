@@ -5,7 +5,9 @@
 // Copyright (c)  2024, Lukas Scheller lukasscheller@icloud.com
 /// Parsing of identifiers
 use crate::parser::Parser;
+use crate::syntax::node_kind::NodeKind::IdentifierList;
 use crate::tokens::TokenKind;
+use crate::tokens::TokenKind::Comma;
 use crate::tokens::TokenStream;
 
 impl<T: TokenStream> Parser<T> {
@@ -15,5 +17,11 @@ impl<T: TokenStream> Parser<T> {
 
     pub fn opt_identifier(&mut self) -> bool {
         self.opt_token(TokenKind::Identifier)
+    }
+
+    pub fn identifier_list(&mut self) {
+        self.start_node(IdentifierList);
+        self.separated_list(Parser::identifier, Comma);
+        self.end_node();
     }
 }

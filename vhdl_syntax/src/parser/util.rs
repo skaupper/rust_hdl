@@ -9,8 +9,8 @@ use crate::parser::diagnostics::ParserError::*;
 use crate::parser::Parser;
 use crate::syntax::green::GreenNode;
 use crate::syntax::node_kind::NodeKind;
-use crate::tokens::TokenKind;
 use crate::tokens::TokenStream;
+use crate::tokens::{Keyword, TokenKind};
 
 impl<T: TokenStream> Parser<T> {
     pub(crate) fn expect_token(&mut self, kind: TokenKind) {
@@ -24,12 +24,46 @@ impl<T: TokenStream> Parser<T> {
         self.expect_tokens_err([kind]);
     }
 
+    pub(crate) fn expect_tokens<const N: usize>(&mut self, kinds: [TokenKind; N]) {
+        for kind in kinds {
+            self.expect_token(kind)
+        }
+    }
+
+    pub(crate) fn peek_token(&self) -> Option<TokenKind> {
+        Some(self.tokenizer.peek(0)?.kind())
+    }
+
+    pub(crate) fn next_is(&self, kind: TokenKind) -> bool {
+        self.peek_token() == Some(kind)
+    }
+
+    pub(crate) fn expect_kw(&mut self, kind: Keyword) {
+        self.expect_token(TokenKind::Keyword(kind))
+    }
+
     pub(crate) fn opt_token(&mut self, kind: TokenKind) -> bool {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
             true
         } else {
             false
+        }
+    }
+
+    pub(crate) fn opt_tokens<const N: usize>(
+        &mut self,
+        kinds: [TokenKind; N],
+    ) -> Option<TokenKind> {
+        if let Some(token) = self
+            .tokenizer
+            .next_if(|token| kinds.contains(&token.kind()))
+        {
+            let kind = token.kind();
+            self.builder.push(token);
+            Some(kind)
+        } else {
+            None
         }
     }
 

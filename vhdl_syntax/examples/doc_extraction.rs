@@ -23,12 +23,7 @@ end foo;
 entity bar is
 end bar;
     ";
-    let file = match vhdl.parse::<DesignFile>() {
-        Ok(file) => file,
-        Err(_) => {
-            panic!("erroneous input")
-        }
-    };
+    let file = vhdl.parse::<DesignFile>().expect("Erroneous input");
     // HashMap containing the entity-names as keys and the associated doc-comment as values
     let mut comments = HashMap::new();
     // Walk the file filtering all entities.
@@ -79,5 +74,5 @@ fn extract_doc_from_trivia(trivia: &Trivia) -> String {
             _ => None,
         })
         .map(|str| str.trim())
-        .collect::<String>()
+        .collect()
 }

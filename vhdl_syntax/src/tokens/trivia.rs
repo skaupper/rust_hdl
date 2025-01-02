@@ -15,7 +15,7 @@ pub struct Trivia {
 }
 
 impl Trivia {
-    /// Constructs a new trivia by it's pieces
+    /// Constructs a new trivia by its pieces
     pub fn new(pieces: impl Into<Vec<TriviaPiece>>) -> Trivia {
         Trivia {
             pieces: pieces.into(),

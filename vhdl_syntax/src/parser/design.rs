@@ -37,7 +37,13 @@ impl<T: TokenStream> Parser<T> {
                 Keyword(Kw::Package) => todo!(),
                 Keyword(Kw::Context) => todo!(),
                 Keyword(Kw::Architecture) => todo!(),
-                _ => self.expect_tokens_err([Keyword(Kw::Entity)]),
+                _ => self.expect_tokens_err([
+                    Keyword(Kw::Entity),
+                    Keyword(Kw::Configuration),
+                    Keyword(Kw::Package),
+                    Keyword(Kw::Context),
+                    Keyword(Kw::Architecture),
+                ]),
             },
             None => self.eof_err(),
         }
@@ -64,7 +70,7 @@ mod tests {
             begin
             end entity;
         }
-        .parse(Parser::design_file);
+        .parse_syntax(Parser::design_file);
         assert_eq!(
             entity.test_text(),
             "\
@@ -74,6 +80,7 @@ DesignFile
       Keyword(Entity)
       Identifier 'my_ent'
       Keyword(Is)
+      EntityHeader
       Keyword(Begin)
       Keyword(End)
       Identifier 'my_ent'
@@ -83,6 +90,7 @@ DesignFile
       Keyword(Entity)
       Identifier 'my_ent2'
       Keyword(Is)
+      EntityHeader
       Keyword(Begin)
       Keyword(End)
       Keyword(Entity)

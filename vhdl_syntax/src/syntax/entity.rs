@@ -6,11 +6,12 @@
 
 use crate::parser::diagnostics::ParserDiagnostic;
 use crate::parser::Parser;
+use crate::syntax::interface::{GenericClause, PortClause};
 use crate::syntax::node::{SyntaxNode, SyntaxToken};
 use crate::syntax::node_kind::NodeKind;
 use crate::syntax::AstNode;
 use crate::tokens::tokenizer::Tokenize;
-use crate::tokens::TokenKind::{Identifier, Keyword};
+use crate::tokens::TokenKind::{Identifier, Keyword, SemiColon};
 use crate::tokens::{IntoTokenStream, Keyword as Kw};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -62,11 +63,63 @@ impl EntityDeclaration {
         self.0.tokens().find(|tok| tok.kind() == Identifier)
     }
 
+    pub fn is_token(&self) -> Option<SyntaxToken> {
+        self.0.tokens().find(|tok| tok.kind() == Keyword(Kw::Is))
+    }
+
+    pub fn header(&self) -> Option<EntityHeader> {
+        self.0.children().find_map(EntityHeader::cast)
+    }
+
+    pub fn begin_token(&self) -> Option<SyntaxToken> {
+        self.0.tokens().find(|tok| tok.kind() == Keyword(Kw::Begin))
+    }
+
+    pub fn end_token(&self) -> Option<SyntaxToken> {
+        self.0.tokens().find(|tok| tok.kind() == Keyword(Kw::End))
+    }
+
+    pub fn final_entity_token(&self) -> Option<SyntaxToken> {
+        self.0
+            .tokens()
+            .filter(|tok| tok.kind() == Keyword(Kw::Entity))
+            .nth(1)
+    }
+
     pub fn final_identifier(&self) -> Option<SyntaxToken> {
         self.0
             .tokens()
             .filter(|tok| tok.kind() == Identifier)
             .nth(1)
+    }
+
+    pub fn semi_colon_token(&self) -> Option<SyntaxToken> {
+        self.0.tokens().find(|tok| tok.kind() == SemiColon)
+    }
+}
+
+pub struct EntityHeader(pub(crate) SyntaxNode);
+
+impl AstNode for EntityHeader {
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        match node.kind() {
+            NodeKind::EntityHeader => Some(EntityHeader(node)),
+            _ => None,
+        }
+    }
+
+    fn raw(&self) -> SyntaxNode {
+        self.0.clone()
+    }
+}
+
+impl EntityHeader {
+    pub fn generic_clause(&self) -> Option<GenericClause> {
+        self.0.children().find_map(GenericClause::cast)
+    }
+
+    pub fn port_clause(&self) -> Option<PortClause> {
+        self.0.children().find_map(PortClause::cast)
     }
 }
 

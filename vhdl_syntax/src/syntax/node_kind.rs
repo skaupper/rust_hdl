@@ -17,5 +17,9 @@ pub enum NodeKind {
     DesignUnit,
     DesignFile,
     ContextClause,
-    // ...
+    GenericClause,
+    PortClause,
+    InterfaceList,
+    IdentifierList,
+    InterfaceObjectDeclaration, // ...
 }

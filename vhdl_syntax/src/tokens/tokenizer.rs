@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c)  2024, Lukas Scheller lukasscheller@icloud.com
+// Copyright (c) 2025, Lukas Scheller lukasscheller@icloud.com
 
 use crate::latin_1::Latin1String;
 use crate::tokens::TokenKind::*;

@@ -105,7 +105,10 @@ impl AstNode for LibraryUnit {
     }
 
     fn raw(&self) -> SyntaxNode {
-        todo!()
+        match self {
+            LibraryUnit::Primary(primary) => primary.raw(),
+            LibraryUnit::Secondary(_) => todo!(),
+        }
     }
 }
 
@@ -115,6 +118,26 @@ pub enum PrimaryUnit {
     Package(PackageDeclaration),
     PackageInstantiation(PackageInstantiationDeclaration),
     Context(ContextDeclaration),
+}
+
+impl AstNode for PrimaryUnit {
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        match node.kind() {
+            NodeKind::EntityDeclaration => Some(PrimaryUnit::Entity(EntityDeclaration(node))),
+            NodeKind::ConfigurationDeclaration
+            | NodeKind::PackageDeclaration
+            | NodeKind::PackageInstantiationDeclaration
+            | NodeKind::ContextDeclaration => todo!(),
+            _ => None,
+        }
+    }
+
+    fn raw(&self) -> SyntaxNode {
+        match self {
+            PrimaryUnit::Entity(entity_declaration) => entity_declaration.raw(),
+            _ => todo!(),
+        }
+    }
 }
 
 pub enum SecondaryUnit {

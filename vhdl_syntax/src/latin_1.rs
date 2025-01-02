@@ -2,15 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2018, Olof Kraigher olof.kraigher@gmail.com
+// Copyright (c) 2025, Olof Kraigher olof.kraigher@gmail.com
 
-use std::fmt;
 use std::str;
+use std::{fmt, slice};
 
 pub fn iso_8859_1_to_utf8(bytes: &[u8]) -> String {
-    let mut utf8_bytes = Vec::new();
-    for byte in bytes.iter() {
-        let byte = *byte;
+    let mut utf8_bytes = Vec::with_capacity(bytes.len());
+    for byte in bytes.iter().copied() {
         if byte < 128 {
             utf8_bytes.push(byte);
         } else if byte < 192 {
@@ -21,7 +20,7 @@ pub fn iso_8859_1_to_utf8(bytes: &[u8]) -> String {
             utf8_bytes.push(byte - 64);
         }
     }
-    unsafe { str::from_utf8_unchecked(utf8_bytes.as_slice()).to_string() }
+    unsafe { String::from_utf8_unchecked(utf8_bytes) }
 }
 
 pub fn char_to_latin1(chr: char) -> Option<u8> {
@@ -51,7 +50,7 @@ pub fn char_to_latin1(chr: char) -> Option<u8> {
 
 #[derive(PartialEq, Eq, Hash, Clone, Default)]
 pub struct Latin1String {
-    pub bytes: Vec<u8>,
+    bytes: Vec<u8>,
 }
 
 impl Latin1String {
@@ -61,7 +60,7 @@ impl Latin1String {
         }
     }
 
-    pub fn chars(&self) -> impl Iterator<Item = &u8> {
+    pub fn chars(&self) -> slice::Iter<u8> {
         self.bytes.iter()
     }
 
@@ -92,9 +91,7 @@ impl Latin1String {
     }
 
     pub fn to_lowercase(&self) -> Latin1String {
-        let mut latin1 = Latin1String {
-            bytes: self.bytes.clone(),
-        };
+        let mut latin1 = self.clone();
         latin1.make_lowercase();
         latin1
     }

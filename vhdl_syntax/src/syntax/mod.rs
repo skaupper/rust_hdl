@@ -8,6 +8,7 @@ pub mod child;
 pub mod design;
 pub mod entity;
 pub(crate) mod green;
+pub mod interface;
 pub mod node;
 pub mod node_kind;
 pub mod rewrite;
