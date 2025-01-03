@@ -307,8 +307,8 @@ impl<T: Iterator<Item = u8>> Tokenizer<T> {
                     let mut comment = Latin1String::default();
                     loop {
                         if self.current == Some(b'*') && self.peek() == Some(b'/') {
-                            self.next();
-                            self.next();
+                            self.skip();
+                            self.skip();
                             break;
                         }
                         let Some(ch) = self.skip() else { break };
@@ -1289,7 +1289,8 @@ comment
                     leading_trivia: Trivia::new([TriviaPiece::LineFeeds(1)]),
                     trailing_trivia: Trivia::new([
                         TriviaPiece::LineFeeds(2),
-                        TriviaPiece::BlockComment("\ncomment\n".to_string())
+                        TriviaPiece::BlockComment("\ncomment\n".to_string()),
+                        TriviaPiece::LineFeeds(2),
                     ]),
                 },
                 Token {
@@ -1305,6 +1306,7 @@ comment
                     trailing_trivia: Trivia::new([
                         TriviaPiece::Spaces(1),
                         TriviaPiece::BlockComment("\ncomment\n".to_string()),
+                        TriviaPiece::LineFeeds(2),
                     ]),
                 },
             ]
