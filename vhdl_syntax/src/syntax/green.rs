@@ -82,6 +82,16 @@ impl GreenNodeData {
         self.push_child(Child::Token((offset, GreenToken::new(token))))
     }
 
+    #[cfg(test)]
+    pub fn push_tokens(&mut self, offset: usize, tokens: impl IntoIterator<Item = Token>) {
+        let mut new_offset = offset;
+        for token in tokens {
+            let tok_len = token.byte_len();
+            self.push_token(new_offset, token);
+            new_offset += tok_len;
+        }
+    }
+
     pub(crate) fn push_node(&mut self, offset: usize, node: GreenNodeData) {
         self.push_child(Child::Node((offset, GreenNode::new(node))))
     }

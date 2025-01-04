@@ -85,12 +85,28 @@ impl SyntaxToken {
         self.green().kind()
     }
 
-    pub fn leading_trivia(&self) -> &Trivia {
-        self.green().leading_trivia()
+    /// Returns all trivia between this token and the previous one, resp. only the leading trivia
+    /// of this token, if there is no previous token.
+    pub fn leading_trivia(&self) -> Trivia {
+        let mut trivia = self
+            .prev_token()
+            .map(|trivia| trivia.green().trailing_trivia().clone())
+            .unwrap_or_default();
+        trivia.append(&mut self.green().leading_trivia().clone());
+        trivia
     }
 
-    pub fn trailing_trivia(&self) -> &Trivia {
-        self.green().trailing_trivia()
+    /// Returns all trailing trivia between this token and the next one, resp. only the trailing
+    /// trivia of this token, if there is no next token.
+    pub fn trailing_trivia(&self) -> Trivia {
+        let mut trivia = self.green().trailing_trivia().clone();
+        trivia.append(
+            &mut self
+                .next_token()
+                .map(|trivia| trivia.green().leading_trivia().clone())
+                .unwrap_or_default(),
+        );
+        trivia
     }
 
     pub fn text(&self) -> &str {
@@ -117,6 +133,10 @@ impl SyntaxToken {
         self.siblings().nth(self.index().checked_sub(1)?)
     }
 
+    pub fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
+        self.siblings().nth(self.index().checked_add(1)?)
+    }
+
     pub fn prev_token(&self) -> Option<SyntaxToken> {
         match self.prev_sibling_or_token() {
             Some(element) => element.last_token(),
@@ -124,6 +144,16 @@ impl SyntaxToken {
                 .ancestors()
                 .find_map(|it| it.prev_sibling_or_token())
                 .and_then(|element| element.last_token()),
+        }
+    }
+
+    pub fn next_token(&self) -> Option<SyntaxToken> {
+        match self.next_sibling_or_token() {
+            Some(element) => element.first_token(),
+            None => self
+                .ancestors()
+                .find_map(|node| node.next_sibling_or_token())
+                .and_then(|element| element.first_token()),
         }
     }
 
@@ -287,6 +317,12 @@ impl SyntaxNode {
             .nth(self.index().checked_sub(1)?)
     }
 
+    fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
+        self.parent()?
+            .children_with_tokens()
+            .nth(self.index().checked_add(1)?)
+    }
+
     #[cfg(test)]
     pub(crate) fn test_text(&self) -> String {
         self.green().test_text(0)
@@ -307,6 +343,13 @@ impl SyntaxElement {
         }
     }
 
+    pub fn first_token(&self) -> Option<SyntaxToken> {
+        match self {
+            SyntaxElement::Node(node) => node.first_token(),
+            SyntaxElement::Token(token) => Some(token.clone()),
+        }
+    }
+
     pub fn offset(&self) -> usize {
         match self {
             Child::Token(token) => token.text_pos(),
@@ -319,5 +362,131 @@ impl SyntaxElement {
             Child::Token(token) => token.byte_len(),
             Child::Node(node) => node.byte_len(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::syntax::green::{GreenNode, GreenNodeData};
+    use crate::syntax::node::SyntaxNode;
+    use crate::syntax::node_kind::NodeKind::EntityDeclaration;
+    use crate::tokens::{Keyword, Token, TokenKind, Trivia, TriviaPiece};
+
+    #[test]
+    fn no_leading_trivia() {
+        let token = Token {
+            kind: TokenKind::Keyword(Keyword::Entity),
+            leading_trivia: Trivia::default(),
+            trailing_trivia: Default::default(),
+            text: "entity".to_string(),
+        };
+        let mut green_node = GreenNodeData::new(EntityDeclaration);
+        green_node.push_token(0, token);
+        let node = SyntaxNode::new_root(GreenNode::new(green_node));
+        assert_eq!(
+            node.first_token().unwrap().leading_trivia(),
+            Trivia::default()
+        );
+    }
+
+    #[test]
+    fn leading_trivia_no_previous_token() {
+        let token = Token {
+            kind: TokenKind::Keyword(Keyword::Entity),
+            leading_trivia: Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)]),
+            trailing_trivia: Default::default(),
+            text: "entity".to_string(),
+        };
+        let mut green_node = GreenNodeData::new(EntityDeclaration);
+        green_node.push_token(0, token);
+        let node = SyntaxNode::new_root(GreenNode::new(green_node));
+        assert_eq!(
+            node.first_token().unwrap().leading_trivia(),
+            Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)])
+        );
+    }
+
+    #[test]
+    fn leading_trivia_with_previous_token() {
+        let tokens = [
+            Token {
+                kind: TokenKind::Keyword(Keyword::Entity),
+                leading_trivia: Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)]),
+                trailing_trivia: Trivia::new([TriviaPiece::Spaces(2)]),
+                text: "entity".to_string(),
+            },
+            Token {
+                kind: TokenKind::Identifier,
+                leading_trivia: Trivia::new([TriviaPiece::LineFeeds(1)]),
+                trailing_trivia: Trivia::new([TriviaPiece::FormFeeds(2)]),
+                text: "foo".to_string(),
+            },
+        ];
+        let mut green_node = GreenNodeData::new(EntityDeclaration);
+        green_node.push_tokens(0, tokens);
+        let node = SyntaxNode::new_root(GreenNode::new(green_node));
+        assert_eq!(
+            node.tokens().nth(1).unwrap().leading_trivia(),
+            Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)])
+        );
+    }
+
+    #[test]
+    fn no_trailing_trivia() {
+        let token = Token {
+            kind: TokenKind::Keyword(Keyword::Entity),
+            leading_trivia: Trivia::default(),
+            trailing_trivia: Default::default(),
+            text: "entity".to_string(),
+        };
+        let mut green_node = GreenNodeData::new(EntityDeclaration);
+        green_node.push_token(0, token);
+        let node = SyntaxNode::new_root(GreenNode::new(green_node));
+        assert_eq!(
+            node.first_token().unwrap().trailing_trivia(),
+            Trivia::default()
+        );
+    }
+
+    #[test]
+    fn trailing_trivia_no_next_token() {
+        let token = Token {
+            kind: TokenKind::Keyword(Keyword::Entity),
+            leading_trivia: Trivia::default(),
+            trailing_trivia: Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)]),
+            text: "entity".to_string(),
+        };
+        let mut green_node = GreenNodeData::new(EntityDeclaration);
+        green_node.push_token(0, token);
+        let node = SyntaxNode::new_root(GreenNode::new(green_node));
+        assert_eq!(
+            node.first_token().unwrap().trailing_trivia(),
+            Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)])
+        );
+    }
+
+    #[test]
+    fn trailing_trivia_with_next_token() {
+        let tokens = [
+            Token {
+                kind: TokenKind::Keyword(Keyword::Entity),
+                leading_trivia: Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)]),
+                trailing_trivia: Trivia::new([TriviaPiece::Spaces(2)]),
+                text: "entity".to_string(),
+            },
+            Token {
+                kind: TokenKind::Identifier,
+                leading_trivia: Trivia::new([TriviaPiece::LineFeeds(1)]),
+                trailing_trivia: Trivia::new([TriviaPiece::FormFeeds(2)]),
+                text: "foo".to_string(),
+            },
+        ];
+        let mut green_node = GreenNodeData::new(EntityDeclaration);
+        green_node.push_tokens(0, tokens);
+        let node = SyntaxNode::new_root(GreenNode::new(green_node));
+        assert_eq!(
+            node.first_token().unwrap().trailing_trivia(),
+            Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)])
+        );
     }
 }

@@ -37,17 +37,9 @@ end bar;
         // Since the AST is capable of producing any input, no matter how erroneous,
         // all nodes and tokens are optional.
         if let Some(token) = entity.entity_token() {
-            // The trivia is where all auxiliary information concerning a token is stored.
-            // Examples include comments, whitespaces or newline.
-            // Here, we combine the leading trivia of the `entity` token with the trailing trivia
-            // of the previous token to later extract all comments between the two tokens
-            let mut trivia = if let Some(prev_token) = token.prev_token() {
-                prev_token.trailing_trivia().clone()
-            } else {
-                Trivia::default()
-            };
-            trivia.append(&mut token.leading_trivia().clone());
-            let comment = extract_doc_from_trivia(&trivia);
+            // The trivia is where all auxiliary information concerning a token is stored,
+            // for example, comments, whitespaces or newlines.
+            let comment = extract_doc_from_trivia(token.leading_trivia());
             // If the entity has an identifier, add the extracted documentation to the map
             if let Some(ident) = entity.identifier() {
                 if !comment.is_empty() {
@@ -65,9 +57,8 @@ end bar;
 /// Note that this is a toy example that simply checks for line comments that with a `-` (i.e.,
 /// a doc comment is written using the `--- doc comment` syntax. A real-world example would probably
 /// include more sophisticated processing.
-fn extract_doc_from_trivia(trivia: &Trivia) -> String {
+fn extract_doc_from_trivia(trivia: Trivia) -> String {
     trivia
-        .pieces
         .iter()
         .filter_map(|piece| match piece {
             TriviaPiece::LineComment(comment) => comment.strip_prefix("-"),

@@ -57,11 +57,11 @@ impl Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for trivia in &self.leading_trivia {
+        for trivia in self.leading_trivia.iter() {
             write!(f, "{trivia}")?;
         }
         write!(f, "{}", self.text)?;
-        for trivia in &self.trailing_trivia {
+        for trivia in self.trailing_trivia.iter() {
             write!(f, "{trivia}")?;
         }
         Ok(())
