@@ -40,6 +40,12 @@ impl NodeBuilder {
         self.rel_offset = 0;
     }
 
+    pub fn embed_node(&mut self, kind: NodeKind) {
+        let new_node = GreenNodeData::new_with_children(kind, self.current().remove_children());
+        self.current().push_node(0, new_node);
+        self.rel_offset = 0;
+    }
+
     pub fn end_node(&mut self) {
         if self.stack.len() == 1 {
             return;

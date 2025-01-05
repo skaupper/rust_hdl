@@ -100,11 +100,21 @@ impl GreenNodeData {
         self.children[index] = child;
     }
 
+    pub(crate) fn remove_children(&mut self) -> Vec<GreenChild> {
+        let children = Vec::from_iter(self.children.drain(..));
+        self.children.clear();
+        children
+    }
+
     pub(crate) fn new(kind: NodeKind) -> GreenNodeData {
         GreenNodeData {
             kind,
             children: vec![],
         }
+    }
+
+    pub(crate) fn new_with_children(kind: NodeKind, children: Vec<GreenChild>) -> GreenNodeData {
+        GreenNodeData { kind, children }
     }
 
     pub fn byte_len(&self) -> usize {

@@ -1,0 +1,35 @@
+name ::=
+          simple_name
+        | operator_symbol
+        | character_literal
+        | selected_name
+        | indexed_name
+        | slice_name
+        | attribute_name
+        | external_name
+
+simple_name             ::= identifier
+selected_name           ::= prefix "." suffix
+indexed_name            ::= prefix "(" expression { "," expression } ")"
+slice_name              ::= prefix "(" discrete_range ")"
+attribute_name          ::= prefix [ signature ] "'" attribute_designator [ "(" expression ")" ]
+attribute_designator    ::= attribute_simple_name
+
+external_name ::=
+     external_constant_name
+   | external_signal_name
+   | external_variable_name
+
+prefix ::=
+     name
+   | function_call
+
+suffix ::=
+     simple_name
+   | character_literal
+   | operator_symbol
+   | "all"
+
+function_call ::=  name [ "(" actual_parameter_part ")" ]
+
+operator_symbol ::= string_literal

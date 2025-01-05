@@ -30,12 +30,28 @@ impl<T: TokenStream> Parser<T> {
         }
     }
 
+    pub(crate) fn expect_one_of_tokens<const N: usize>(&mut self, kinds: [TokenKind; N]) {
+        for kind in kinds {
+            if self.opt_token(kind) {
+                break;
+            }
+        }
+    }
+
     pub(crate) fn peek_token(&self) -> Option<TokenKind> {
         Some(self.tokenizer.peek(0)?.kind())
     }
 
+    pub(crate) fn peek_nth_token(&self, n: usize) -> Option<TokenKind> {
+        Some(self.tokenizer.peek(n)?.kind())
+    }
+
     pub(crate) fn next_is(&self, kind: TokenKind) -> bool {
         self.peek_token() == Some(kind)
+    }
+
+    pub(crate) fn nth_is(&self, kind: TokenKind, n: usize) -> bool {
+        self.peek_nth_token(n) == Some(kind)
     }
 
     pub(crate) fn expect_kw(&mut self, kind: Keyword) {

@@ -37,20 +37,54 @@ impl<T: TokenStream> Parser<T> {
                 Keyword(Kw::Package) => todo!(),
                 Keyword(Kw::Context) => todo!(),
                 Keyword(Kw::Architecture) => todo!(),
-                _ => self.expect_tokens_err([
-                    Keyword(Kw::Entity),
-                    Keyword(Kw::Configuration),
-                    Keyword(Kw::Package),
-                    Keyword(Kw::Context),
-                    Keyword(Kw::Architecture),
-                ]),
+                _ => {
+                    self.expect_tokens_err([
+                        Keyword(Kw::Entity),
+                        Keyword(Kw::Configuration),
+                        Keyword(Kw::Package),
+                        Keyword(Kw::Context),
+                        Keyword(Kw::Architecture),
+                    ]);
+                    // TODO: resynchronize the parser instead
+                    self.tokenizer.next();
+                }
             },
             None => self.eof_err(),
         }
         self.end_node();
     }
 
-    pub fn context_clause(&mut self) {}
+    pub fn context_clause(&mut self) {
+        loop {
+            match self.tokenizer.peek_next() {
+                Some(tok) => match tok.kind() {
+                    Keyword(Kw::Use) => self.use_clause(),
+                    Keyword(Kw::Library) => self.library_clause(),
+                    Keyword(Kw::Context) => self.context_reference(),
+                    _ => break,
+                },
+                _ => self.eof_err(),
+            }
+        }
+    }
+
+    pub fn library_clause(&mut self) {
+        self.start_node(NodeKind::LibraryClause);
+        self.expect_token(Keyword(Kw::Library));
+        self.identifier_list();
+        self.expect_token(SemiColon);
+        self.end_node();
+    }
+
+    pub fn use_clause(&mut self) {
+        self.start_node(NodeKind::UseClause);
+        self.expect_token(Keyword(Kw::Use));
+        self.selected_name_list();
+        self.expect_token(SemiColon);
+        self.end_node();
+    }
+
+    pub fn context_reference(&mut self) {}
 }
 
 #[cfg(test)]
@@ -94,6 +128,53 @@ DesignFile
       Keyword(Begin)
       Keyword(End)
       Keyword(Entity)
+      SemiColon
+"
+        );
+    }
+
+    #[test]
+    fn parse_entity_with_context_clause() {
+        let (design, _) = "\
+            library ieee;
+            use ieee.std_logic_1164.all;
+
+            entity my_ent is
+            begin
+            end my_ent;
+        "
+        .parse_syntax(Parser::design_file);
+        assert_eq!(
+            design.test_text(),
+            "\
+DesignFile
+  DesignUnit
+    LibraryClause
+      Keyword(Library)
+      IdentifierList
+        Identifier 'ieee'
+      SemiColon
+    UseClause
+      Keyword(Use)
+      SelectedNameList
+        SelectedName
+          SelectedName
+            SelectedName
+              NamePrefix
+                Identifier 'ieee'
+              Dot
+              Identifier 'std_logic_1164'
+            Dot
+            Keyword(All)
+      SemiColon
+    EntityDeclaration
+      Keyword(Entity)
+      Identifier 'my_ent'
+      Keyword(Is)
+      EntityHeader
+      Keyword(Begin)
+      Keyword(End)
+      Identifier 'my_ent'
       SemiColon
 "
         );
