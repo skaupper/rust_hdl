@@ -39,12 +39,6 @@ impl GreenToken {
         self.0.byte_len()
     }
 
-    pub fn clone_with_text(&self, text: impl Into<String>) -> Self {
-        let mut token = self.0.deref().clone();
-        token.text = text.into();
-        GreenToken::new(token)
-    }
-
     pub(crate) fn token(&self) -> &Token {
         self.0.as_ref()
     }

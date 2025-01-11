@@ -177,8 +177,14 @@ impl SyntaxToken {
     }
 
     pub fn clone_with_text(&self, text: impl Into<String>) -> SyntaxToken {
-        let green = self.green().clone_with_text(text);
-        SyntaxToken::new(self.0.offset, self.index(), self.parent(), green)
+        let mut token = self.token().clone();
+        token.text = text.into();
+        self.clone_with_token(token)
+    }
+
+    pub fn clone_with_token(&self, token: Token) -> SyntaxToken {
+        let green = GreenToken::new(token);
+        SyntaxToken::new(self.offset(), self.index(), self.parent(), green)
     }
 
     pub(crate) fn green(&self) -> &GreenToken {

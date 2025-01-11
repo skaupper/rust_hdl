@@ -37,9 +37,11 @@ impl<R: Fn(&SyntaxElement) -> RewriteAction> Rewriter<R> {
         match (self.rewrite_action)(&syntax_element) {
             RewriteAction::Leave => match syntax_element {
                 SyntaxElement::Node(node) => {
-                    GreenChild::Node((0, self.rewrite_node_to_green(node)))
+                    GreenChild::Node((node.offset(), self.rewrite_node_to_green(node)))
                 }
-                SyntaxElement::Token(token) => GreenChild::Token((0, token.green().clone())),
+                SyntaxElement::Token(token) => {
+                    GreenChild::Token((token.offset(), token.green().clone()))
+                }
             },
             RewriteAction::Change(element) => element.green(),
         }
