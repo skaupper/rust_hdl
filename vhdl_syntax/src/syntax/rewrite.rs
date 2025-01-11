@@ -5,50 +5,58 @@
 //
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
-use crate::syntax::child::Child;
-use crate::syntax::green::GreenNode;
-use crate::syntax::node::SyntaxNode;
+use crate::syntax::green::{GreenChild, GreenNode};
+use crate::syntax::node::{SyntaxElement, SyntaxNode};
 
 // TODO: should also support delete and add
 pub enum RewriteAction {
     /// Leave the node as-is
     Leave,
     /// Change the node to a different one
-    Change(SyntaxNode),
+    Change(SyntaxElement),
 }
 
-pub struct Rewriter<R: Fn(&SyntaxNode) -> RewriteAction> {
+/// Facility to rewrite a `SyntaxNode` by re-building it while changing individual nodes.
+///
+/// Note that when calling `Rewrite` on a node, the node itself cannot change, only it's children
+/// may.
+pub struct Rewriter<R: Fn(&SyntaxElement) -> RewriteAction> {
     rewrite_action: R,
 }
 
-impl<R: Fn(&SyntaxNode) -> RewriteAction> Rewriter<R> {
+impl<R: Fn(&SyntaxElement) -> RewriteAction> Rewriter<R> {
     pub fn new(rewrite_action: R) -> Self {
         Rewriter { rewrite_action }
     }
 
     pub fn rewrite(&self, syntax_node: SyntaxNode) -> SyntaxNode {
-        SyntaxNode::new_root(self.rewrite_to_green(syntax_node))
+        SyntaxNode::new_root(self.rewrite_node_to_green(syntax_node))
     }
 
-    fn rewrite_to_green(&self, syntax_node: SyntaxNode) -> GreenNode {
-        match (self.rewrite_action)(&syntax_node) {
-            RewriteAction::Leave => {
-                let mut new_green_node = syntax_node.green().data().clone();
-                for (i, child) in syntax_node.children().enumerate() {
-                    match (self.rewrite_action)(&child) {
-                        RewriteAction::Leave => {
-                            // TODO: The offset is currently fixed at 0
-                            new_green_node
-                                .replace_child(i, Child::Node((0, self.rewrite_to_green(child))));
-                        }
-                        RewriteAction::Change(node) => {
-                            new_green_node.replace_child(i, Child::Node((0, node.green().clone())));
-                        }
-                    }
+    fn rewrite_element_to_green(&self, syntax_element: SyntaxElement) -> GreenChild {
+        match (self.rewrite_action)(&syntax_element) {
+            RewriteAction::Leave => match syntax_element {
+                SyntaxElement::Node(node) => {
+                    GreenChild::Node((0, self.rewrite_node_to_green(node)))
                 }
-                GreenNode::new(new_green_node)
-            }
-            RewriteAction::Change(node) => node.green().clone(),
+                SyntaxElement::Token(token) => GreenChild::Token((0, token.green().clone())),
+            },
+            RewriteAction::Change(element) => element.green(),
         }
+    }
+
+    fn rewrite_node_to_green(&self, syntax_node: SyntaxNode) -> GreenNode {
+        let mut new_green_node = syntax_node.green().data().clone();
+        for (i, child) in syntax_node.children_with_tokens().enumerate() {
+            match (self.rewrite_action)(&child) {
+                RewriteAction::Leave => {
+                    new_green_node.replace_child(i, self.rewrite_element_to_green(child));
+                }
+                RewriteAction::Change(node) => {
+                    new_green_node.replace_child(i, node.green());
+                }
+            }
+        }
+        GreenNode::new(new_green_node)
     }
 }

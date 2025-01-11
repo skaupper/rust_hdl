@@ -56,12 +56,13 @@ impl<T: TokenStream> Parser<T> {
 #[cfg(test)]
 mod tests {
     use crate::parser::{CanParse, Parser};
-    use crate::vhdl;
+    use crate::tokens;
+    use crate::tokens::IntoTokenStream;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn parse_simple_entity() {
-        let (entity, _) = vhdl! {
+        let (entity, _) = tokens! {
             entity my_ent is
             begin
             end my_ent;
@@ -70,6 +71,7 @@ mod tests {
             begin
             end entity;
         }
+        .into_token_stream()
         .parse_syntax(Parser::design_file);
         assert_eq!(
             entity.test_text(),

@@ -8,6 +8,7 @@ use crate::syntax::child::Child;
 use crate::syntax::node_kind::NodeKind;
 use crate::tokens::{Token, TokenKind, Trivia};
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,6 +37,16 @@ impl GreenToken {
 
     pub fn byte_len(&self) -> usize {
         self.0.byte_len()
+    }
+
+    pub fn clone_with_text(&self, text: impl Into<String>) -> Self {
+        let mut token = self.0.deref().clone();
+        token.text = text.into();
+        GreenToken::new(token)
+    }
+
+    pub(crate) fn token(&self) -> &Token {
+        self.0.as_ref()
     }
 }
 

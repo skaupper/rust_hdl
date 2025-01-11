@@ -49,17 +49,28 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 use crate::syntax::child::Child;
-use crate::syntax::green::{GreenNode, GreenToken};
+use crate::syntax::green::{GreenChild, GreenNode, GreenToken};
 use crate::syntax::node_kind::NodeKind;
 use crate::syntax::rewrite::{RewriteAction, Rewriter};
-use crate::tokens::{TokenKind, Trivia};
+use crate::tokens::{Token, TokenKind, Trivia};
 use std::fmt::{Display, Formatter};
 use std::iter;
 use std::sync::Arc;
 
-type SyntaxElement = Child<SyntaxNode, SyntaxToken>;
+pub type SyntaxElement = Child<SyntaxNode, SyntaxToken>;
 
-#[derive(Clone, Debug)]
+impl SyntaxElement {
+    pub(crate) fn green(&self) -> GreenChild {
+        match self {
+            SyntaxElement::Node(node) => GreenChild::Node((node.offset(), node.green().clone())),
+            SyntaxElement::Token(token) => {
+                GreenChild::Token((token.offset(), token.green().clone()))
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxToken(Arc<SyntaxTokenData>);
 
 impl SyntaxToken {
@@ -75,6 +86,14 @@ impl SyntaxToken {
             parent,
             green,
         }))
+    }
+
+    pub fn offset(&self) -> usize {
+        self.0.offset
+    }
+
+    pub fn token(&self) -> &Token {
+        self.green().token()
     }
 
     pub fn byte_len(&self) -> usize {
@@ -157,6 +176,11 @@ impl SyntaxToken {
         }
     }
 
+    pub fn clone_with_text(&self, text: impl Into<String>) -> SyntaxToken {
+        let green = self.green().clone_with_text(text);
+        SyntaxToken::new(self.0.offset, self.index(), self.parent(), green)
+    }
+
     pub(crate) fn green(&self) -> &GreenToken {
         &self.0.green
     }
@@ -172,7 +196,7 @@ impl Display for SyntaxToken {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct SyntaxTokenData {
     offset: usize,
     index: usize,
@@ -281,8 +305,24 @@ impl SyntaxNode {
         iter::successors(Some(self.clone()), SyntaxNode::parent)
     }
 
-    pub fn rewrite(&self, rewrite: impl Fn(&SyntaxNode) -> RewriteAction) -> SyntaxNode {
+    pub fn rewrite(&self, rewrite: impl Fn(&SyntaxElement) -> RewriteAction) -> SyntaxNode {
         Rewriter::new(rewrite).rewrite(self.clone())
+    }
+
+    pub fn rewrite_nodes(&self, rewrite: impl Fn(&SyntaxNode) -> RewriteAction) -> SyntaxNode {
+        Rewriter::new(|element| match element {
+            SyntaxElement::Node(node) => rewrite(node),
+            SyntaxElement::Token(_) => RewriteAction::Leave,
+        })
+        .rewrite(self.clone())
+    }
+
+    pub fn rewrite_tokens(&self, rewrite: impl Fn(&SyntaxToken) -> RewriteAction) -> SyntaxNode {
+        Rewriter::new(|element| match element {
+            SyntaxElement::Node(_) => RewriteAction::Leave,
+            SyntaxElement::Token(token) => rewrite(token),
+        })
+        .rewrite(self.clone())
     }
 
     pub(crate) fn new_root(green: GreenNode) -> SyntaxNode {
@@ -368,9 +408,12 @@ impl SyntaxElement {
 #[cfg(test)]
 mod tests {
     use crate::syntax::green::{GreenNode, GreenNodeData};
-    use crate::syntax::node::SyntaxNode;
+    use crate::syntax::node::{SyntaxElement, SyntaxNode};
     use crate::syntax::node_kind::NodeKind::EntityDeclaration;
+    use crate::syntax::rewrite::RewriteAction;
+    use crate::tokens;
     use crate::tokens::{Keyword, Token, TokenKind, Trivia, TriviaPiece};
+    use std::collections::VecDeque;
 
     #[test]
     fn no_leading_trivia() {
@@ -488,5 +531,64 @@ mod tests {
             node.first_token().unwrap().trailing_trivia(),
             Trivia::new([TriviaPiece::Spaces(2), TriviaPiece::LineFeeds(1)])
         );
+    }
+
+    #[test]
+    fn no_rewrite_is_noop() {
+        let orig_tokens = tokens! {
+            entity foo is end foo;
+        };
+        let mut data = GreenNodeData::new(EntityDeclaration);
+        data.push_tokens(0, orig_tokens.clone());
+        let node = SyntaxNode::new_root(GreenNode::new(data));
+        let new_node = node.rewrite(|_| RewriteAction::Leave);
+        let new_tokens = new_node
+            .tokens()
+            .map(|syntax_token| syntax_token.token().clone())
+            .collect::<VecDeque<_>>();
+        assert_eq!(new_tokens, orig_tokens);
+    }
+
+    #[test]
+    fn rewrite_tokens() {
+        let mut data = GreenNodeData::new(EntityDeclaration);
+        data.push_tokens(0, tokens! { entity foo is end foo; });
+        let node = SyntaxNode::new_root(GreenNode::new(data));
+        let new_node = node.rewrite_tokens(|tok| {
+            if tok.text() == "foo" {
+                RewriteAction::Change(SyntaxElement::Token(tok.clone_with_text("bar")))
+            } else {
+                RewriteAction::Leave
+            }
+        });
+        let new_tokens = new_node
+            .tokens()
+            .map(|syntax_token| syntax_token.token().clone())
+            .collect::<VecDeque<_>>();
+        assert_eq!(
+            new_tokens,
+            tokens! {
+                entity bar is end bar;
+            }
+        );
+    }
+
+    #[test]
+    fn rewrite_does_not_modify_self() {
+        let orig_tokens = tokens! {
+            entity foo is end foo;
+        };
+        let mut data = GreenNodeData::new(EntityDeclaration);
+        data.push_tokens(0, orig_tokens.clone());
+        let node = SyntaxNode::new_root(GreenNode::new(data));
+        let new_node = node.rewrite_nodes(|node| match node.kind() {
+            EntityDeclaration => panic!("Should not modify self"),
+            _ => RewriteAction::Leave,
+        });
+        let new_tokens = new_node
+            .tokens()
+            .map(|syntax_token| syntax_token.token().clone())
+            .collect::<VecDeque<_>>();
+        assert_eq!(new_tokens, orig_tokens);
     }
 }

@@ -104,7 +104,7 @@ pub trait IntoTokenStream {
 
 impl<I> IntoTokenStream for I
 where
-    I: Iterator<Item = Token>,
+    I: IntoIterator<Item = Token>,
 {
     fn into_token_stream(self) -> impl TokenStream {
         VecDeque::from_iter(self)

@@ -11,6 +11,7 @@ use std::fmt::{Display, Formatter};
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Token {
     pub(crate) kind: TokenKind,
+    // TODO: Decide how to deal with trivia. Having two vectors is a bit wasted.
     pub(crate) leading_trivia: Trivia,
     pub(crate) trailing_trivia: Trivia,
     // TODO: this must be interned (e.g., by arena allocation) to avoid allocating every token
@@ -76,7 +77,7 @@ impl Display for Token {
 /// assert_eq!(tok![;], Token::simple(TokenKind::SemiColon, ";"));
 /// ```
 ///
-/// See also [vhdl!](crate::vhdl) to generate a vector of tokens from their literal form.
+/// See also [vhdl!](crate::tokens) to generate a vector of tokens from their literal form.
 #[macro_export]
 macro_rules! tok {
     (begin) => {
@@ -118,9 +119,9 @@ macro_rules! tok {
 }
 
 #[macro_export]
-macro_rules! vhdl {
-    ($($tokens:tt)+) => {
-        std::collections::VecDeque::from([$($crate::tok![$tokens],)+])
+macro_rules! tokens {
+    ($($tokens:tt)*) => {
+        [$($crate::tok![$tokens],)*]
     };
 }
 
@@ -128,7 +129,7 @@ macro_rules! vhdl {
 mod tests {
     #[test]
     fn macros() {
-        let _ = vhdl! {
+        let _ = tokens! {
             entity my_ent is begin
             end my_ent;
         };
