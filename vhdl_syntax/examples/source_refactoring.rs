@@ -1,9 +1,3 @@
-use vhdl_syntax::syntax::AstNode;
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this file,
-// You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 /// Shows how a user can refactor source code based on parsed input.
 /// The goal of this executable is to replace every entity named 'foo' with a new entity named
 /// 'no_longer_foo'.
@@ -14,9 +8,14 @@ use vhdl_syntax::syntax::AstNode;
 /// function that is applied to every node. The function returns [RewriteAction::Leave], if the
 /// node is to be left as-is. However, the user can also return [RewriteAction::Change] to
 /// change the current node into a different one.
-use vhdl_syntax::syntax::design::DesignFile;
-use vhdl_syntax::syntax::entity::EntityDeclaration;
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this file,
+// You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 use vhdl_syntax::syntax::rewrite::RewriteAction;
+use vhdl_syntax::syntax::AstNode;
+use vhdl_syntax::syntax::{DesignFileSyntax, EntityDeclarationSyntax};
 
 fn main() {
     // The file to change
@@ -30,7 +29,7 @@ end bar1;
 entity foobar is
 end foobar;
     ";
-    let file = vhdl.parse::<DesignFile>().expect("erroneous input");
+    let file = vhdl.parse::<DesignFileSyntax>().expect("erroneous input");
 
     // The target
     let replacement_entity = "\
@@ -38,15 +37,19 @@ entity no_longer_foo is
 end no_longer_foo;
 
 "
-    .parse::<EntityDeclaration>()
+    .parse::<EntityDeclarationSyntax>()
     .expect("erroneous input")
     .raw();
 
     let new_file = file
         .raw()
-        .rewrite(|node| match EntityDeclaration::cast(node.clone()) {
+        .rewrite(|node| match EntityDeclarationSyntax::cast(node.clone()) {
             // If the syntax node is an entity and is named 'foo', replace it with the replacement entity.
-            Some(ent) if ent.identifier().is_some_and(|tok| tok.text() == "foo") => {
+            Some(ent)
+                if ent
+                    .identifier_token()
+                    .is_some_and(|tok| tok.text() == "foo") =>
+            {
                 RewriteAction::Change(replacement_entity.clone())
             }
             // If the syntax node is not an entity, or the name of the entity is not 'foo', leave the node as-is

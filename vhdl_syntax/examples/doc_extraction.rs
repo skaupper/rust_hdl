@@ -6,10 +6,9 @@
 /// This is an example program showcasing how one can extract documentation comments
 /// from an entity using the `vhdl_syntax` crate.
 use std::collections::HashMap;
-use vhdl_syntax::syntax::design::DesignFile;
-use vhdl_syntax::syntax::entity::EntityDeclaration;
 use vhdl_syntax::syntax::visitor::WalkEvent;
 use vhdl_syntax::syntax::AstNode;
+use vhdl_syntax::syntax::{DesignFileSyntax, EntityDeclarationSyntax};
 use vhdl_syntax::tokens::{Trivia, TriviaPiece};
 
 fn main() {
@@ -23,14 +22,14 @@ end foo;
 entity bar is
 end bar;
     ";
-    let file = vhdl.parse::<DesignFile>().expect("Erroneous input");
+    let file = vhdl.parse::<DesignFileSyntax>().expect("Erroneous input");
     // HashMap containing the entity-names as keys and the associated doc-comment as values
     let mut comments = HashMap::new();
     // Walk the file filtering all entities.
     // Every walked AST node will be visited twice; once when entering and once when leaving.
     // Since we simply want to visit each entity, we only look at enter events.
     for entity in file.walk().filter_map(|event| match event {
-        WalkEvent::Enter(node) => EntityDeclaration::cast(node),
+        WalkEvent::Enter(node) => EntityDeclarationSyntax::cast(node),
         WalkEvent::Leave(_) => None,
     }) {
         // we check that there is an `entity` token.
@@ -41,7 +40,7 @@ end bar;
             // for example, comments, whitespaces or newlines.
             let comment = extract_doc_from_trivia(token.leading_trivia());
             // If the entity has an identifier, add the extracted documentation to the map
-            if let Some(ident) = entity.identifier() {
+            if let Some(ident) = entity.identifier_token() {
                 if !comment.is_empty() {
                     comments.insert(ident.text().to_string(), comment);
                 }

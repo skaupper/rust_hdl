@@ -52,7 +52,8 @@ impl<T: TokenStream> Parser<T> {
     /// Parses a design file and returns the root node.
     pub(crate) fn parse(mut self) -> (SyntaxNode, Vec<diagnostics::ParserDiagnostic>) {
         self.design_file();
-        (SyntaxNode::new_root(self.builder.end()), self.diagnostics)
+        let (green, diagnostics) = self.end();
+        (SyntaxNode::new_root(green), diagnostics)
     }
 }
 

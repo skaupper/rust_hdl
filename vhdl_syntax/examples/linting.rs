@@ -4,12 +4,11 @@
 //
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
-/// Showcases how one could write a simple linter that checks that the declared name and final name
-/// of an entity match.
-use vhdl_syntax::syntax::design::DesignFile;
-use vhdl_syntax::syntax::entity::EntityDeclaration;
 use vhdl_syntax::syntax::visitor::WalkEvent;
 use vhdl_syntax::syntax::AstNode;
+/// Showcases how one could write a simple linter that checks that the declared name and final name
+/// of an entity match.
+use vhdl_syntax::syntax::{DesignFileSyntax, EntityDeclarationSyntax};
 
 fn main() {
     let design = "\
@@ -19,15 +18,15 @@ end entity baz;
 entity foo is
 end entity bar;
     "
-    .parse::<DesignFile>()
+    .parse::<DesignFileSyntax>()
     .expect("erroneous input");
 
     for entity_declaration in design.walk().filter_map(|event| match event {
-        WalkEvent::Enter(node) => EntityDeclaration::cast(node),
+        WalkEvent::Enter(node) => EntityDeclarationSyntax::cast(node),
         WalkEvent::Leave(_) => None,
     }) {
-        if let Some(first_ident) = entity_declaration.identifier() {
-            if let Some(second_ident) = entity_declaration.final_identifier() {
+        if let Some(first_ident) = entity_declaration.identifier_token() {
+            if let Some(second_ident) = entity_declaration.final_identifier_token() {
                 // print, if the identifiers mismatch.
                 // Note that the text position is the number of chars.
                 if first_ident.text() != second_ident.text() {
