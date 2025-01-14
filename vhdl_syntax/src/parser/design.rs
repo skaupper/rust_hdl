@@ -54,7 +54,39 @@ impl<T: TokenStream> Parser<T> {
         self.end_node();
     }
 
-    pub fn context_clause(&mut self) {}
+    pub fn context_clause(&mut self) {
+        loop {
+            match self.tokenizer.peek_next() {
+                Some(tok) => match tok.kind() {
+                    Keyword(Kw::Use) => self.use_clause(),
+                    Keyword(Kw::Library) => self.library_clause(),
+                    Keyword(Kw::Context) => self.context_reference(),
+                    _ => break,
+                },
+                _ => self.eof_err(),
+            }
+        }
+    }
+
+    pub fn library_clause(&mut self) {
+        self.start_node(NodeKind::LibraryClause);
+        self.expect_token(Keyword(Kw::Library));
+        self.identifier_list();
+        self.expect_token(SemiColon);
+        self.end_node();
+    }
+
+    pub fn use_clause(&mut self) {
+        self.start_node(NodeKind::UseClause);
+        self.expect_token(Keyword(Kw::Use));
+        self.name_group_list();
+        self.expect_token(SemiColon);
+        self.end_node();
+    }
+
+    pub fn context_reference(&mut self) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
@@ -101,6 +133,74 @@ DesignFile
       Keyword(End)
       Keyword(Entity)
       SemiColon
+"
+        );
+    }
+
+    #[test]
+    fn parse_entity_with_context_clause() {
+        let (design, _) = "\
+            library ieee;
+            use ieee.std_logic_1164.all;
+
+            entity my_ent is
+            begin
+            end my_ent;
+        "
+        .parse_syntax(Parser::design_file);
+        assert_eq!(
+            design.test_text(),
+            "\
+DesignFile
+  DesignUnit
+    LibraryClause
+      Keyword(Library)
+      IdentifierList
+        Identifier 'ieee'
+      SemiColon
+    UseClause
+      Keyword(Use)
+      NameGroupList
+        NameGroup
+          Identifier 'ieee'
+          Dot
+          Identifier 'std_logic_1164'
+          Dot
+          Keyword(All)
+      SemiColon
+    EntityDeclaration
+      Keyword(Entity)
+      Identifier 'my_ent'
+      Keyword(Is)
+      EntityHeader
+      Keyword(Begin)
+      Keyword(End)
+      Identifier 'my_ent'
+      SemiColon
+"
+        );
+    }
+
+    #[test]
+    fn parse_use_clause() {
+        let (node, diag) = "use lib1.lib2.lib3.all;".parse_syntax(Parser::use_clause);
+        assert_eq!(diag.len(), 0);
+
+        assert_eq!(
+            node.test_text(),
+            "\
+UseClause
+  Keyword(Use)
+  NameGroupList
+    NameGroup
+      Identifier 'lib1'
+      Dot
+      Identifier 'lib2'
+      Dot
+      Identifier 'lib3'
+      Dot
+      Keyword(All)
+  SemiColon
 "
         );
     }
