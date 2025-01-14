@@ -37,13 +37,17 @@ impl<T: TokenStream> Parser<T> {
                 Keyword(Kw::Package) => todo!(),
                 Keyword(Kw::Context) => todo!(),
                 Keyword(Kw::Architecture) => todo!(),
-                _ => self.expect_tokens_err([
-                    Keyword(Kw::Entity),
-                    Keyword(Kw::Configuration),
-                    Keyword(Kw::Package),
-                    Keyword(Kw::Context),
-                    Keyword(Kw::Architecture),
-                ]),
+                _ => {
+                    self.expect_tokens_err([
+                        Keyword(Kw::Entity),
+                        Keyword(Kw::Configuration),
+                        Keyword(Kw::Package),
+                        Keyword(Kw::Context),
+                        Keyword(Kw::Architecture),
+                    ]);
+                    // TODO: resynchronize the parser instead
+                    self.tokenizer.next();
+                }
             },
             None => self.eof_err(),
         }
