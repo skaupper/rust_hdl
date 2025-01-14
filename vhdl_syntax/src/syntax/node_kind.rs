@@ -21,5 +21,11 @@ pub enum NodeKind {
     PortClause,
     InterfaceList,
     IdentifierList,
+    NameGroup,
+    ParenGroup,
+    BracketGroup,
+    ParenChildGroup,
+    NameGroupList,
+    ExternalName,
     InterfaceObjectDeclaration, // ...
 }

@@ -13,6 +13,21 @@ use crate::tokens::TokenStream;
 use crate::tokens::{Keyword, TokenKind};
 
 impl<T: TokenStream> Parser<T> {
+    pub(crate) fn push_n_tokens(&mut self, amt: usize) {
+        for _ in 1..amt {
+            self.push_next();
+        }
+    }
+
+    pub(crate) fn push_next(&mut self) {
+        if let Some(tok) = self.tokenizer.next() {
+            self.builder.push(tok);
+        } else {
+            // TODO: error handling?
+            self.eof_err();
+        }
+    }
+
     pub(crate) fn expect_token(&mut self, kind: TokenKind) {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
@@ -30,8 +45,20 @@ impl<T: TokenStream> Parser<T> {
         }
     }
 
+    pub(crate) fn expect_one_of_tokens<const N: usize>(&mut self, kinds: [TokenKind; N]) {
+        for kind in kinds {
+            if self.opt_token(kind) {
+                break;
+            }
+        }
+    }
+
     pub(crate) fn peek_token(&self) -> Option<TokenKind> {
         Some(self.tokenizer.peek(0)?.kind())
+    }
+
+    pub(crate) fn peek_nth_token(&self, n: usize) -> Option<TokenKind> {
+        Some(self.tokenizer.peek(n)?.kind())
     }
 
     pub(crate) fn next_is(&self, kind: TokenKind) -> bool {
