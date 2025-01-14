@@ -30,6 +30,15 @@ impl<T: TokenStream> Parser<T> {
         }
     }
 
+    pub(crate) fn expect_one_of_tokens<const N: usize>(&mut self, kinds: [TokenKind; N]) {
+        for kind in kinds {
+            if self.opt_token(kind) {
+                return;
+            }
+        }
+        self.expect_tokens_err(kinds);
+    }
+
     pub(crate) fn peek_token(&self) -> Option<TokenKind> {
         Some(self.tokenizer.peek(0)?.kind())
     }

@@ -10,6 +10,7 @@ use crate::parser::diagnostics::ParserDiagnostic;
 use crate::syntax::node::SyntaxNode;
 use crate::tokens::{Token, TokenStream, Tokenize};
 
+mod alias_declaration;
 mod builder;
 pub mod design;
 pub mod diagnostics;
@@ -18,6 +19,8 @@ mod expression;
 pub mod identifier;
 mod interface;
 mod list;
+mod names;
+mod signature;
 pub mod statements;
 mod subtype;
 #[cfg(test)]

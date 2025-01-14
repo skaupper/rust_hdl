@@ -3,11 +3,19 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
-pub mod entity;
-pub use entity::*;
 pub mod interface;
 pub use interface::*;
-pub mod design;
-pub use design::*;
+pub mod signature;
+pub use signature::*;
+pub mod names;
+pub use names::*;
+pub mod subtype;
+pub use subtype::*;
+pub mod entity;
+pub use entity::*;
 pub mod identifier;
 pub use identifier::*;
+pub mod alias_declaration;
+pub use alias_declaration::*;
+pub mod design;
+pub use design::*;

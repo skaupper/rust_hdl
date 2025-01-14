@@ -152,7 +152,12 @@ impl GreenNode {
                         Child::Token((_, token)) => {
                             write!(&mut w, "{:indent$}", "", indent = indent + 2)?;
                             write!(&mut w, "{:?}", token.kind())?;
-                            if matches!(token.kind(), TokenKind::Identifier) {
+                            if matches!(
+                                token.kind(),
+                                TokenKind::Identifier
+                                    | TokenKind::StringLiteral
+                                    | TokenKind::CharacterLiteral
+                            ) {
                                 write!(&mut w, " '{}'", token.text())?;
                             }
                             writeln!(&mut w)?;

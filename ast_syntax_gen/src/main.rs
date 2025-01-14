@@ -69,6 +69,21 @@ macro_rules! token {
     };
 }
 
+macro_rules! subtoken {
+    ($name:ident) => {
+        node_with_tokens::SubToken {
+            kind: node_with_children::TokenKind::Normal(stringify!($name).to_string()),
+            name: format!("{}", stringify!($name)),
+        }
+    };
+    ($name:ident, name=$alternate_name:ident) => {
+        node_with_tokens::SubToken {
+            kind: node_with_children::TokenKind::Normal(stringify!($name).to_string()),
+            name: format!("{}", stringify!($alternate_name)),
+        }
+    };
+}
+
 macro_rules! subtoken_kw {
     ($name:ident) => {
         node_with_tokens::SubToken {
@@ -220,6 +235,36 @@ mod rs_module;
 fn main() -> Result<(), Box<dyn Error>> {
     let nodes = HashMap::from([
         (
+            "alias_declaration",
+            vec![node_with_children(
+                "AliasDeclaration",
+                [
+                    keyword!(Alias),
+                    token_node!(Designator),
+                    token!(Colon),
+                    node!(SubtypeIndication),
+                    keyword!(Is),
+                    node!(Name),
+                    node!(Signature),
+                    token!(SemiColon),
+                ],
+            )],
+        ),
+        (
+            "names",
+            vec![
+                node_with_tokens(
+                    "Designator",
+                    [
+                        subtoken!(Identifier),
+                        subtoken!(StringLiteral),
+                        subtoken!(CharacterLiteral),
+                    ],
+                ),
+                node_with_subnodes("Name", []),
+            ],
+        ),
+        (
             "design",
             vec![
                 node_with_children("DesignFile", [node!(DesignUnit repeated)]),
@@ -267,6 +312,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 node_with_children("EntityHeader", [node!(GenericClause), node!(PortClause)]),
             ],
         ),
+        ("signature", vec![node_with_children("Signature", [])]),
+        ("subtype", vec![node_with_children("SubtypeIndication", [])]),
         (
             "interface",
             vec![

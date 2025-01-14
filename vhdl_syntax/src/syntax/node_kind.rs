@@ -6,8 +6,12 @@
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum NodeKind {
+    AliasDeclaration,
     EntityDeclaration,
     ConfigurationDeclaration,
+    Name,
+    SubtypeIndication,
+    Signature,
     PackageDeclaration,
     PackageInstantiationDeclaration,
     ContextDeclaration,
