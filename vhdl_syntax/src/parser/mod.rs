@@ -11,6 +11,7 @@ use crate::syntax::node::SyntaxNode;
 use crate::tokens::{Token, TokenStream, Tokenize};
 
 mod alias_declaration;
+mod attributes;
 mod builder;
 pub mod design;
 pub mod diagnostics;
@@ -25,6 +26,7 @@ pub mod statements;
 mod subtype;
 #[cfg(test)]
 mod test_utils;
+#[macro_use]
 mod util;
 
 /// The parser turns a token stram, produced by a [TokenStream] into

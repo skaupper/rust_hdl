@@ -1,11 +1,12 @@
+//! Parsing of design files, and abstract design units.
+//! The concrete design units (entity, architecture, ...) live in their own file.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c)  2024, Lukas Scheller lukasscheller@icloud.com
+use crate::match_next_token;
 use crate::parser::Parser;
-/// Parsing of design files, and abstract design units.
-/// The concrete design units (entity, architecture, ...) live in their own file.
 use crate::syntax::node_kind::NodeKind;
 use crate::tokens::token_kind::Keyword as Kw;
 use crate::tokens::token_kind::TokenKind::*;
@@ -30,23 +31,13 @@ impl<T: TokenStream> Parser<T> {
         }
         self.start_node(NodeKind::DesignUnit);
         self.context_clause();
-        match self.tokenizer.peek_next() {
-            Some(tok) => match tok.kind() {
-                Keyword(Kw::Entity) => self.entity(),
-                Keyword(Kw::Configuration) => todo!(),
-                Keyword(Kw::Package) => todo!(),
-                Keyword(Kw::Context) => todo!(),
-                Keyword(Kw::Architecture) => todo!(),
-                _ => self.expect_tokens_err([
-                    Keyword(Kw::Entity),
-                    Keyword(Kw::Configuration),
-                    Keyword(Kw::Package),
-                    Keyword(Kw::Context),
-                    Keyword(Kw::Architecture),
-                ]),
-            },
-            None => self.eof_err(),
-        }
+        match_next_token!(self,
+            Keyword(Kw::Entity) => self.entity(),
+            Keyword(Kw::Configuration) => todo!(),
+            Keyword(Kw::Package) => todo!(),
+            Keyword(Kw::Context) => todo!(),
+            Keyword(Kw::Architecture) => todo!()
+        );
         self.end_node();
     }
 

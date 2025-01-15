@@ -6,6 +6,8 @@
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum NodeKind {
+    AttributeDeclaration,
+    AttributeSpecification,
     AliasDeclaration,
     EntityDeclaration,
     ConfigurationDeclaration,
@@ -25,5 +27,9 @@ pub enum NodeKind {
     PortClause,
     InterfaceList,
     IdentifierList,
+    DesignatorList,
+    EntitySpecification,
+    EntityNameList,
+    EntityDesignator,
     InterfaceObjectDeclaration, // ...
 }

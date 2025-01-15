@@ -20,4 +20,8 @@ impl<T: TokenStream> Parser<T> {
         self.designator();
         self.end_node();
     }
+
+    pub fn type_mark(&mut self) {
+        self.name()
+    }
 }

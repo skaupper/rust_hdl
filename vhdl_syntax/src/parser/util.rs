@@ -12,7 +12,64 @@ use crate::syntax::node_kind::NodeKind;
 use crate::tokens::TokenStream;
 use crate::tokens::{Keyword, TokenKind};
 
+/// Allows match-style syntax for tokens.
+/// This functino does not consume the next token.
+/// If the token was not seen, or the parser is at EOF, this function pushes an error.
+///
+/// Note: It is possible to simulate 'Or' branches, i.e.,
+/// ```no-test
+/// match x {
+///     A | B => { /*...*/ }
+/// }
+/// ```
+/// However, due to the syntax limitations from macro_rules, these
+/// are spelled out in the following way:
+/// ```no-test
+/// match_next_token!(x,
+///     A, B => { /*...*/ }
+/// )
+/// ```
+#[macro_export]
+macro_rules! match_next_token {
+    ($parser:expr, $($body:tt)*) => {
+        match_next_token!(@inner $parser, [[ $($body)* ]], [[ $($body)* ]])
+    };
+    (@inner $parser:expr, [[ $($($pattern:pat_param),+ => $action:expr),+ ]], [[ $($($pattern_expr:expr),+ => $_action_expr:expr),+ ]]) => {
+        match $parser.peek_token() {
+            $(Some($($pattern)|+) => $action),+,
+            None => $parser.eof_err(),
+            _ => $parser.expect_tokens_err([$($($pattern_expr),+),+])
+        }
+    };
+}
+
+/// Allows match-style syntax for tokens.
+/// This functino consumes the next token, if found.
+/// If the token was not seen, or the parser is at EOF, this function pushes an error.
+#[macro_export]
+macro_rules! match_next_token_consume {
+    ($parser:expr, $($body:tt)*) => {
+        match_next_token_consume!(@inner $parser, [[ $($body)* ]], [[ $($body)* ]])
+    };
+    (@inner $parser:expr, [[ $($($pattern:pat_param),+ => $action:expr),+ ]], [[ $($($pattern_expr:expr),+ => $_action_expr:expr),+ ]]) => {
+        match $parser.peek_token() {
+            $(Some($pattern) => {
+                $parser.skip();
+                $action
+            }),+
+            None => $parser.eof_err(),
+            _ => $parser.expect_tokens_err([$($($pattern_expr),+),+])
+        }
+    };
+}
+
 impl<T: TokenStream> Parser<T> {
+    pub(crate) fn skip(&mut self) {
+        if let Some(token) = self.tokenizer.next() {
+            self.builder.push(token);
+        }
+    }
+
     pub(crate) fn expect_token(&mut self, kind: TokenKind) {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
