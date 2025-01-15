@@ -6,11 +6,17 @@
 
 use crate::parser::Parser;
 use crate::syntax::node_kind::NodeKind::*;
-use crate::tokens::Keyword as Kw;
 use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
+use crate::tokens::{Keyword as Kw, TokenKind};
 
 impl<T: TokenStream> Parser<T> {
+    pub fn opt_generic_clause(&mut self) {
+        if self.next_is(Keyword(Kw::Generic)) {
+            self.generic_clause();
+        }
+    }
+
     pub fn generic_clause(&mut self) {
         self.start_node(GenericClause);
         self.expect_kw(Kw::Generic);
@@ -18,6 +24,12 @@ impl<T: TokenStream> Parser<T> {
         self.interface_list();
         self.expect_tokens([RightPar, SemiColon]);
         self.end_node();
+    }
+
+    pub fn opt_port_clause(&mut self) {
+        if self.next_is(Keyword(Kw::Port)) {
+            self.port_clause();
+        }
     }
 
     pub fn port_clause(&mut self) {

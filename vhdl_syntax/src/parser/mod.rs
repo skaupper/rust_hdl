@@ -28,6 +28,7 @@ mod subtype;
 mod test_utils;
 #[macro_use]
 mod util;
+mod component_declaraion;
 
 /// The parser turns a token stram, produced by a [TokenStream] into
 /// [Syntax Nodes](crate::node::SyntaxNode) that form a Concrete Syntax Tree.

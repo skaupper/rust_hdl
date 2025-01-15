@@ -11,6 +11,7 @@ pub enum NodeKind {
     AliasDeclaration,
     EntityDeclaration,
     ConfigurationDeclaration,
+    ComponentDeclaration,
     Name,
     SubtypeIndication,
     Signature,
