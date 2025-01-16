@@ -70,6 +70,12 @@ impl<T: TokenStream> Parser<T> {
         }
     }
 
+    pub(crate) fn skip_n(&mut self, n: usize) {
+        for _ in 0..n {
+            self.skip()
+        }
+    }
+
     pub(crate) fn expect_token(&mut self, kind: TokenKind) {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
@@ -78,6 +84,7 @@ impl<T: TokenStream> Parser<T> {
         // TODO: what are possible recovery strategies?
         // - Leave as is
         // - Insert pseudo-token
+        self.skip();
         self.expect_tokens_err([kind]);
     }
 
@@ -100,8 +107,16 @@ impl<T: TokenStream> Parser<T> {
         Some(self.tokenizer.peek(0)?.kind())
     }
 
+    pub(crate) fn peek_nth_token(&self, n: usize) -> Option<TokenKind> {
+        Some(self.tokenizer.peek(n)?.kind())
+    }
+
     pub(crate) fn next_is(&self, kind: TokenKind) -> bool {
         self.peek_token() == Some(kind)
+    }
+
+    pub(crate) fn next_nth_is(&self, kind: TokenKind, n: usize) -> bool {
+        self.peek_nth_token(n) == Some(kind)
     }
 
     pub(crate) fn expect_kw(&mut self, kind: Keyword) {

@@ -5,7 +5,7 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 use crate::parser::Parser;
-use crate::syntax::node_kind::NodeKind::Name;
+use crate::syntax::node_kind::NodeKind::{Label, Name};
 use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
 
@@ -23,5 +23,13 @@ impl<T: TokenStream> Parser<T> {
 
     pub fn type_mark(&mut self) {
         self.name()
+    }
+
+    pub fn opt_label(&mut self) {
+        if self.next_is(Identifier) && self.next_nth_is(Colon, 1) {
+            self.start_node(Label);
+            self.skip_n(2);
+            self.end_node();
+        }
     }
 }

@@ -11,4 +11,8 @@ impl<T: TokenStream> Parser<T> {
     pub fn expression(&mut self) {
         // TODO
     }
+
+    pub fn condition(&mut self) {
+        self.expression()
+    }
 }
