@@ -10,26 +10,14 @@ use crate::parser::diagnostics::ParserDiagnostic;
 use crate::syntax::node::SyntaxNode;
 use crate::tokens::{Token, TokenStream, Tokenize};
 
-mod alias_declaration;
-mod attributes;
 mod builder;
-pub mod design;
 pub mod diagnostics;
-pub mod entity;
-mod expression;
-pub mod identifier;
-mod interface;
-mod list;
-mod names;
-mod signature;
-pub mod statements;
-mod subtype;
 #[cfg(test)]
 mod test_utils;
 #[macro_use]
 mod util;
-mod component_declaraion;
-mod concurrent_statement;
+mod list;
+mod productions;
 
 /// The parser turns a token stram, produced by a [TokenStream] into
 /// [Syntax Nodes](crate::node::SyntaxNode) that form a Concrete Syntax Tree.

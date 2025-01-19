@@ -1,9 +1,9 @@
+//! Parsing of identifiers
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c)  2024, Lukas Scheller lukasscheller@icloud.com
-/// Parsing of identifiers
+// Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 use crate::parser::Parser;
 use crate::syntax::node_kind::NodeKind::IdentifierList;
 use crate::tokens::TokenKind;

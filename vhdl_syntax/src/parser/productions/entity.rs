@@ -29,12 +29,8 @@ impl<T: TokenStream> Parser<T> {
 
     fn entity_header(&mut self) {
         self.start_node(EntityHeader);
-        if self.next_is(Keyword(Kw::Generic)) {
-            self.generic_clause();
-        }
-        if self.next_is(Keyword(Kw::Port)) {
-            self.port_clause();
-        }
+        self.opt_generic_clause();
+        self.opt_port_clause();
         self.end_node();
     }
 }

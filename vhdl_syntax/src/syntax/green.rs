@@ -8,7 +8,6 @@ use crate::syntax::child::Child;
 use crate::syntax::node_kind::NodeKind;
 use crate::tokens::{Token, TokenKind, Trivia};
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

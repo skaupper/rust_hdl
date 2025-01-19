@@ -5,6 +5,7 @@
 //
 // Copyright (c)  2024, Lukas Scheller lukasscheller@icloud.com
 pub mod child;
+#[allow(unused)]
 mod generated;
 pub(crate) mod green;
 pub mod node;

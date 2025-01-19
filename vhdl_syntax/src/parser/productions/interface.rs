@@ -6,9 +6,9 @@
 
 use crate::parser::Parser;
 use crate::syntax::node_kind::NodeKind::*;
+use crate::tokens::Keyword as Kw;
 use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
-use crate::tokens::{Keyword as Kw, TokenKind};
 
 impl<T: TokenStream> Parser<T> {
     pub fn opt_generic_clause(&mut self) {
