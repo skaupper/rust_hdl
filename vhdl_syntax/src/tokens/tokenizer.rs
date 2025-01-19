@@ -565,12 +565,7 @@ impl<T: Iterator<Item = u8>> Iterator for Tokenizer<T> {
         };
         self.last_token_kind = Some(kind);
         let trailing_trivia = self.consume_trivia();
-        Some(Token {
-            text,
-            kind,
-            leading_trivia,
-            trailing_trivia,
-        })
+        Some(Token::new(kind, text, leading_trivia, trailing_trivia))
     }
 }
 
@@ -737,11 +732,13 @@ mod tests {
         }
 
         fn tokenize_kind_value(&self) -> Vec<(TokenKind, String)> {
-            self.tokenize().map(|tok| (tok.kind, tok.text)).collect()
+            self.tokenize()
+                .map(|tok| (tok.kind(), tok.text().to_string()))
+                .collect()
         }
 
         fn tokenize_kinds(&self) -> Vec<TokenKind> {
-            self.tokenize().map(|tok| tok.kind).collect()
+            self.tokenize().map(|tok| tok.kind()).collect()
         }
     }
 
@@ -786,18 +783,13 @@ end entity"
 entity foo"
                 .tokenize_vec(),
             vec![
-                Token {
-                    kind: Keyword(Kw::Entity),
-                    text: "entity".to_string(),
-                    leading_trivia: Trivia::new([TriviaPiece::LineFeeds(2)]),
-                    trailing_trivia: Trivia::new([TriviaPiece::Spaces(1)]),
-                },
-                Token {
-                    kind: Identifier,
-                    text: "foo".to_string(),
-                    leading_trivia: Trivia::new([]),
-                    trailing_trivia: Trivia::new([]),
-                }
+                Token::new(
+                    Keyword(Kw::Entity),
+                    "entity",
+                    Trivia::new([TriviaPiece::LineFeeds(2)]),
+                    Trivia::new([TriviaPiece::Spaces(1)]),
+                ),
+                Token::new(Identifier, "foo", Trivia::new([]), Trivia::new([]),)
             ]
         );
     }
@@ -816,12 +808,7 @@ entity foo"
     fn tokenize_identifier() {
         assert_eq!(
             "my_ident".tokenize_vec(),
-            vec![Token {
-                kind: Identifier,
-                text: "my_ident".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default(),
-            }]
+            vec![Token::simple(Identifier, "my_ident",)]
         );
     }
 
@@ -829,21 +816,11 @@ entity foo"
     fn tokenize_extended_identifier() {
         assert_eq!(
             "\\1$my_ident\\".tokenize_vec(),
-            vec![Token {
-                kind: Identifier,
-                text: "\\1$my_ident\\".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default(),
-            }]
+            vec![Token::simple(Identifier, "\\1$my_ident\\",)]
         );
         assert_eq!(
             "\\my\\\\_ident\\".tokenize_vec(),
-            vec![Token {
-                kind: Identifier,
-                text: "\\my\\\\_ident\\".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default(),
-            }]
+            vec![Token::simple(Identifier, "\\my\\\\_ident\\".to_string(),)]
         );
     }
 
@@ -855,18 +832,18 @@ entity foo"
 my_other_ident"
                 .tokenize_vec(),
             vec![
-                Token {
-                    kind: Identifier,
-                    text: "my_ident".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::new([TriviaPiece::LineFeeds(2)]),
-                },
-                Token {
-                    kind: Identifier,
-                    text: "my_other_ident".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::default(),
-                }
+                Token::new(
+                    Identifier,
+                    "my_ident".to_string(),
+                    Trivia::default(),
+                    Trivia::new([TriviaPiece::LineFeeds(2)]),
+                ),
+                Token::new(
+                    Identifier,
+                    "my_other_ident".to_string(),
+                    Trivia::default(),
+                    Trivia::default(),
+                )
             ]
         );
     }
@@ -892,7 +869,7 @@ my_other_ident"
         assert_eq!(
             "0.1 -2_2.3_3 2.0e3 3.33E2 2.1e-2 4.4e+1 2.5E+3"
                 .tokenize()
-                .map(|tok| (tok.kind, tok.text))
+                .map(|tok| (tok.kind(), tok.text().to_string()))
                 .collect::<Vec<_>>(),
             vec![
                 (AbstractLiteral, "0.1".to_string()),
@@ -933,12 +910,7 @@ my_other_ident"
     fn tokenize_string_literal() {
         assert_eq!(
             "\"string\"".tokenize_vec(),
-            vec![Token {
-                kind: StringLiteral,
-                text: "\"string\"".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default()
-            }]
+            vec![Token::simple(StringLiteral, "\"string\"".to_string())]
         );
     }
 
@@ -946,12 +918,7 @@ my_other_ident"
     fn tokenize_string_literal_quote() {
         assert_eq!(
             "\"str\"\"ing\"".tokenize_vec(),
-            vec![Token {
-                kind: StringLiteral,
-                text: "\"str\"\"ing\"".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default()
-            }]
+            vec![Token::simple(StringLiteral, "\"str\"\"ing\"".to_string(),)]
         );
     }
 
@@ -960,18 +927,18 @@ my_other_ident"
         assert_eq!(
             "\"str\" \"ing\"".tokenize_vec(),
             vec![
-                Token {
-                    kind: StringLiteral,
-                    text: "\"str\"".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::new([TriviaPiece::Spaces(1)])
-                },
-                Token {
-                    kind: StringLiteral,
-                    text: "\"ing\"".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::default()
-                },
+                Token::new(
+                    StringLiteral,
+                    "\"str\"",
+                    Trivia::default(),
+                    Trivia::new([TriviaPiece::Spaces(1)])
+                ),
+                Token::new(
+                    StringLiteral,
+                    "\"ing\"",
+                    Trivia::default(),
+                    Trivia::default()
+                ),
             ]
         );
     }
@@ -980,12 +947,7 @@ my_other_ident"
     fn tokenize_string_literal_multiline() {
         assert_eq!(
             "\"str\ning\"".tokenize_vec(),
-            vec![Token {
-                kind: StringLiteral,
-                text: "\"str\ning\"".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default()
-            }]
+            vec![Token::simple(StringLiteral, "\"str\ning\"".to_string(),)]
         );
     }
 
@@ -993,12 +955,7 @@ my_other_ident"
     fn tokenize_string_literal_error_on_early_eof() {
         assert_eq!(
             "\"string".tokenize_vec(),
-            vec![Token {
-                kind: Unterminated,
-                text: "\"string".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default()
-            }]
+            vec![Token::simple(Unterminated, "\"string".to_string(),)]
         );
     }
 
@@ -1037,15 +994,7 @@ my_other_ident"
                     }
 
                     let tokens = code.tokenize_vec();
-                    assert_eq!(
-                        tokens,
-                        vec![Token {
-                            kind: BitStringLiteral,
-                            text: code,
-                            leading_trivia: Trivia::default(),
-                            trailing_trivia: Trivia::default(),
-                        }]
-                    );
+                    assert_eq!(tokens, vec![Token::simple(BitStringLiteral, code,)]);
                 }
             }
         }
@@ -1053,23 +1002,10 @@ my_other_ident"
 
     #[test]
     fn tokenize_illegal_bit_string() {
-        assert_eq!(
-            "10x".tokenize_vec(),
-            vec![Token {
-                kind: Unknown,
-                text: "10x".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default(),
-            }]
-        );
+        assert_eq!("10x".tokenize_vec(), vec![Token::simple(Unknown, "10x",)]);
         assert_eq!(
             "10ux".tokenize_vec(),
-            vec![Token {
-                kind: Unknown,
-                text: "10ux".to_string(),
-                leading_trivia: Trivia::default(),
-                trailing_trivia: Trivia::default(),
-            }]
+            vec![Token::simple(Unknown, "10ux".to_string(),)]
         );
     }
 
@@ -1240,28 +1176,23 @@ my_other_ident"
 "
             .tokenize_vec(),
             vec![
-                Token {
-                    kind: AbstractLiteral,
-                    text: "1".to_string(),
-                    leading_trivia: Trivia::new([TriviaPiece::LineFeeds(1)]),
-                    trailing_trivia: Trivia::new([
+                Token::new(
+                    AbstractLiteral,
+                    "1",
+                    Trivia::new([TriviaPiece::LineFeeds(1)]),
+                    Trivia::new([
                         TriviaPiece::LineFeeds(1),
                         TriviaPiece::LineComment("comment".to_string()),
                         TriviaPiece::LineFeeds(1)
                     ]),
-                },
-                Token {
-                    kind: Minus,
-                    text: "-".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::default(),
-                },
-                Token {
-                    kind: AbstractLiteral,
-                    text: "2".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::new([TriviaPiece::LineFeeds(1)]),
-                }
+                ),
+                Token::new(Minus, "-".to_string(), Trivia::default(), Trivia::default(),),
+                Token::new(
+                    AbstractLiteral,
+                    "2",
+                    Trivia::default(),
+                    Trivia::new([TriviaPiece::LineFeeds(1)]),
+                )
             ]
         )
     }
@@ -1283,32 +1214,27 @@ comment
 "
             .tokenize_vec(),
             vec![
-                Token {
-                    kind: AbstractLiteral,
-                    text: "1".to_string(),
-                    leading_trivia: Trivia::new([TriviaPiece::LineFeeds(1)]),
-                    trailing_trivia: Trivia::new([
+                Token::new(
+                    AbstractLiteral,
+                    "1",
+                    Trivia::new([TriviaPiece::LineFeeds(1)]),
+                    Trivia::new([
                         TriviaPiece::LineFeeds(2),
                         TriviaPiece::BlockComment("\ncomment\n".to_string()),
                         TriviaPiece::LineFeeds(2),
                     ]),
-                },
-                Token {
-                    kind: Minus,
-                    text: "-".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::default(),
-                },
-                Token {
-                    kind: AbstractLiteral,
-                    text: "2".to_string(),
-                    leading_trivia: Trivia::default(),
-                    trailing_trivia: Trivia::new([
+                ),
+                Token::new(Minus, "-".to_string(), Trivia::default(), Trivia::default(),),
+                Token::new(
+                    AbstractLiteral,
+                    "2",
+                    Trivia::default(),
+                    Trivia::new([
                         TriviaPiece::Spaces(1),
                         TriviaPiece::BlockComment("\ncomment\n".to_string()),
                         TriviaPiece::LineFeeds(2),
                     ]),
-                },
+                ),
             ]
         )
     }

@@ -19,7 +19,7 @@ impl GreenToken {
     }
 
     pub fn kind(&self) -> TokenKind {
-        self.0.kind
+        self.0.kind()
     }
 
     pub fn leading_trivia(&self) -> &Trivia {

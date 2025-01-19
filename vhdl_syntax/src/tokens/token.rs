@@ -4,33 +4,39 @@
 //
 // Copyright (c)  2024, Lukas Scheller lukasscheller@icloud.com
 
+use crate::token_interning::Symbol;
 use crate::tokens::{TokenKind, Trivia};
 use std::fmt::{Display, Formatter};
 
 /// A source-code token.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Token {
-    pub(crate) kind: TokenKind,
     // TODO: Decide how to deal with trivia. Having two vectors is a bit wasted.
     pub(crate) leading_trivia: Trivia,
     pub(crate) trailing_trivia: Trivia,
-    // TODO: this must be interned (e.g., by arena allocation) to avoid allocating every token
-    // on the heap
-    pub(crate) text: String,
+    symbol: Symbol,
 }
 
 impl Token {
-    pub fn simple(kind: TokenKind, text: impl Into<String>) -> Token {
+    pub fn new(
+        kind: TokenKind,
+        text: impl Into<String>,
+        leading_trivia: Trivia,
+        trailing_trivia: Trivia,
+    ) -> Token {
         Token {
-            kind,
-            text: text.into(),
-            leading_trivia: Trivia::default(),
-            trailing_trivia: Trivia::default(),
+            leading_trivia,
+            trailing_trivia,
+            symbol: Symbol::allocate(kind, text.into()),
         }
     }
 
+    pub fn simple(kind: TokenKind, text: impl Into<String>) -> Token {
+        Token::new(kind, text, Trivia::default(), Trivia::default())
+    }
+
     pub fn kind(&self) -> TokenKind {
-        self.kind
+        self.symbol.kind()
     }
 
     pub fn leading_trivia(&self) -> &Trivia {
@@ -42,12 +48,12 @@ impl Token {
     }
 
     pub fn text(&self) -> &str {
-        &self.text
+        self.symbol.text()
     }
 
     /// The length of the main content of this token in bytes without any trivia
     pub fn text_len(&self) -> usize {
-        self.text.len()
+        self.text().len()
     }
 
     /// The length of this token including trivia
@@ -61,7 +67,7 @@ impl Display for Token {
         for trivia in self.leading_trivia.iter() {
             write!(f, "{trivia}")?;
         }
-        write!(f, "{}", self.text)?;
+        write!(f, "{}", self.text())?;
         for trivia in self.trailing_trivia.iter() {
             write!(f, "{trivia}")?;
         }
