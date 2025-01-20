@@ -16,3 +16,4 @@ mod names;
 mod signature;
 mod statements;
 mod subtype;
+mod scalar_types;

@@ -5,6 +5,7 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 use crate::parser::Parser;
+use crate::syntax::node_kind::InternalNodeKind;
 use crate::syntax::node_kind::NodeKind::*;
 use crate::tokens::Keyword as Kw;
 use crate::tokens::TokenKind::*;
@@ -87,12 +88,113 @@ impl<T: TokenStream> Parser<T> {
             Keyword(Kw::Linkage),
         ]);
     }
+
+    pub fn association_list(&mut self) {
+        self.start_node(AssociationList);
+        self.separated_list(Parser::association_element, Comma);
+        self.end_node();
+    }
+
+    pub fn association_element(&mut self) {
+        self.start_node(AssociationElement);
+
+        let right_arrow_idx = match self.distance_to_closing_paren_or_token(Comma) {
+            Some(length) => self.lookahead_max_distance(length, [RightArrow]),
+            None => {
+                self.eof_err();
+                return;
+            }
+        };
+
+        if right_arrow_idx.is_some() {
+            self.formal_part();
+            self.expect_token(RightArrow);
+        }
+        self.actual_part();
+
+        self.end_node();
+    }
+
+    pub fn formal_part(&mut self) {
+        self.start_node(FormalPart);
+        self.name();
+        // Note: `self.name()` will already consume any trailing parenthesized names!
+        self.end_node();
+    }
+
+    pub fn actual_part(&mut self) {
+        self.start_node(ActualPart);
+        let length = match self.distance_to_closing_paren_or_token(Comma) {
+            Some(distance) => distance,
+            None => {
+                self.eof_err();
+                return;
+            }
+        };
+
+        // TODO: Parsing of `actual_part` would boil down to `name | expression | subtype_indication`
+        self.start_node(Internal(InternalNodeKind::ActualPartTokens));
+        self.skip_n(length);
+        self.end_node();
+        self.end_node();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::parser::test_utils::check;
     use crate::parser::Parser;
+
+    #[test]
+    fn association_list() {
+        // Make sure the association list is followed by a closing parenthesis, otherwise parsing will fail
+        // In reality that shouldn't be a problem, since association lists are always to be enclosed in parenthesis!
+        check(
+            Parser::association_list,
+            "arg1, arg2)",
+            "\
+AssociationList
+  AssociationElement
+    ActualPart
+      Internal(ActualPartTokens)
+        Identifier 'arg1'
+  Comma
+  AssociationElement
+    ActualPart
+      Internal(ActualPartTokens)
+        Identifier 'arg2'
+",
+        );
+
+        check(
+            Parser::association_list,
+            "p1 => 1, std_ulogic(p2)=>     sl_sig)",
+            "\
+AssociationList
+  AssociationElement
+    FormalPart
+      Name
+        Identifier 'p1'
+    RightArrow
+    ActualPart
+      Internal(ActualPartTokens)
+        AbstractLiteral
+  Comma
+  AssociationElement
+    FormalPart
+      Name
+        Identifier 'std_ulogic'
+        Internal(SubtypeIndicationOrExpressionTokens)
+          LeftPar
+          Identifier 'p2'
+          RightPar
+    RightArrow
+    ActualPart
+      Internal(ActualPartTokens)
+        Identifier 'sl_sig'
+",
+        );
+    }
 
     #[test]
     fn empty_generic_clause() {

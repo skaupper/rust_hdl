@@ -5,6 +5,12 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum InternalNodeKind {
+    ActualPartTokens,
+    SubtypeIndicationOrExpressionTokens,
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum NodeKind {
     AttributeDeclaration,
     AttributeSpecification,
@@ -24,6 +30,9 @@ pub enum NodeKind {
     DesignUnit,
     DesignFile,
     ContextClause,
+    LibraryClause,
+    UseClause,
+    ContextReference,
     GenericClause,
     PortClause,
     InterfaceList,
@@ -34,5 +43,22 @@ pub enum NodeKind {
     EntityDesignator,
     Label,
     BlockStatement,
-    InterfaceObjectDeclaration, // ...
+    InterfaceObjectDeclaration,
+    ParenthesizedExpression,
+    Expression,
+    SimpleExpression,
+    ExpressionList,
+    Range,
+    SelectedName,
+    ExternalName,
+    ExternalPathName,
+    AttributeName,
+    FunctionCallOrIndexedName,
+    SliceName,
+    Internal(InternalNodeKind),
+    NameList,
+    AssociationList,
+    AssociationElement,
+    FormalPart,
+    ActualPart, // ...
 }

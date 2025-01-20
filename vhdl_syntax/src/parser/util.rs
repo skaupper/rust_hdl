@@ -115,6 +115,13 @@ impl<T: TokenStream> Parser<T> {
         self.peek_token() == Some(kind)
     }
 
+    pub(crate) fn next_is_one_of<const N: usize>(&self, kinds: [TokenKind; N]) -> bool {
+        match self.peek_token() {
+            Some(tok) => kinds.contains(&tok),
+            None => false,
+        }
+    }
+
     pub(crate) fn next_nth_is(&self, kind: TokenKind, n: usize) -> bool {
         self.peek_nth_token(n) == Some(kind)
     }
@@ -173,5 +180,91 @@ impl<T: TokenStream> Parser<T> {
 
     pub(crate) fn end(self) -> (GreenNode, Vec<ParserDiagnostic>) {
         (self.builder.end(), self.diagnostics)
+    }
+
+    fn distance_to_closing_paren_or_token_internal(
+        &mut self,
+        kind: Option<TokenKind>,
+    ) -> Option<usize> {
+        let mut idx = 0;
+        let mut paren_count = 1;
+
+        while paren_count > 0 {
+            match self.peek_nth_token(idx) {
+                Some(TokenKind::LeftPar) => paren_count += 1,
+                Some(TokenKind::RightPar) => paren_count -= 1,
+                Some(tok) => {
+                    if Some(tok) == kind {
+                        return Some(idx);
+                    }
+                }
+                None => return None,
+            }
+            idx += 1;
+        }
+
+        Some(idx - 1)
+    }
+
+    pub(crate) fn distance_to_closing_paren(&mut self) -> Option<usize> {
+        self.distance_to_closing_paren_or_token_internal(None)
+    }
+
+    pub(crate) fn distance_to_closing_paren_or_token(&mut self, kind: TokenKind) -> Option<usize> {
+        self.distance_to_closing_paren_or_token_internal(Some(kind))
+    }
+
+    pub(crate) fn lookahead_in_parens<const N: usize>(
+        &mut self,
+        kinds: [TokenKind; N],
+    ) -> Option<(TokenKind, usize)> {
+        let mut idx = 0;
+        let mut paren_count = 0;
+        let mut paren_found = false;
+
+        while !paren_found || paren_count > 0 {
+            match self.peek_nth_token(idx) {
+                Some(TokenKind::LeftPar) => {
+                    paren_count += 1;
+                    paren_found = true;
+                }
+                Some(TokenKind::RightPar) => paren_count -= 1,
+                Some(tok) => {
+                    if paren_count == 1 && kinds.contains(&tok) {
+                        return Some((tok, idx));
+                    }
+                }
+                None => return None,
+            }
+            idx += 1;
+        }
+
+        None
+    }
+
+    pub(crate) fn lookahead_max_distance<const N: usize>(
+        &mut self,
+        maximum_distance: usize,
+        kinds: [TokenKind; N],
+    ) -> Option<(TokenKind, usize)> {
+        let mut idx = 0;
+        let mut paren_count = 0;
+
+        while idx < maximum_distance {
+            match self.peek_nth_token(idx) {
+                Some(TokenKind::LeftPar) => paren_count += 1,
+                Some(TokenKind::RightPar) => paren_count -= 1,
+
+                Some(tok) => {
+                    if paren_count == 0 && kinds.contains(&tok) {
+                        return Some((tok, idx));
+                    }
+                }
+                None => return None,
+            }
+            idx += 1;
+        }
+
+        None
     }
 }
