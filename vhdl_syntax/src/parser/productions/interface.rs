@@ -11,7 +11,7 @@ use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
 
 impl<T: TokenStream> Parser<T> {
-    pub fn opt_generic_clause(&mut self) {
+    pub(crate) fn opt_generic_clause(&mut self) {
         if self.next_is(Keyword(Kw::Generic)) {
             self.generic_clause();
         }

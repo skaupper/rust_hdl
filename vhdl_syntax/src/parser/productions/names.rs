@@ -10,8 +10,12 @@ use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
 
 impl<T: TokenStream> Parser<T> {
+    pub fn opt_designator(&mut self) {
+        self.opt_tokens([Identifier, StringLiteral]);
+    }
+
     pub fn designator(&mut self) {
-        self.expect_one_of_tokens([Identifier, StringLiteral, CharacterLiteral]);
+        self.expect_one_of_tokens([Identifier, StringLiteral]);
     }
 
     pub fn name(&mut self) {

@@ -48,6 +48,29 @@ impl NodeBuilder {
         self.current().push_node(offset, node)
     }
 
+    /// Ends the current node and changes the kind.
+    /// This is useful when the exact kind cannot be determined a priori (resp. this is hard).
+    /// For instance, when parsing a type, the following production
+    /// ```vhdl
+    /// type foo
+    /// ```
+    /// could either be an incomplete type:
+    /// ```vhdl
+    /// type foo;
+    /// ```
+    /// or a regular type indication:
+    /// ```vhdl
+    /// type foo is -- ...
+    /// ```
+    pub fn end_node_with_kind(&mut self, kind: NodeKind) {
+        if self.stack.len() == 1 {
+            return;
+        }
+        let (offset, mut node) = self.stack.pop().expect("Unbalanced start_node / end_node");
+        node.set_kind(kind);
+        self.current().push_node(offset, node)
+    }
+
     pub fn end(mut self) -> GreenNode {
         GreenNode::new(
             self.stack

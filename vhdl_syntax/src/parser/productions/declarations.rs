@@ -18,7 +18,7 @@ impl<T: TokenStream> Parser<T> {
                 Keyword(Kw::Subtype) => self.subtype_declaration(),
                 Keyword(Kw::Component) => self.component_declaration(),
                 Keyword(Kw::Impure | Kw::Pure | Kw::Function | Kw::Procedure) => {
-                    self.subprogram_declaration()
+                    self.subprogram_declaration_or_body()
                 }
                 Keyword(Kw::Package) => self.package_instantiation_declaration(),
                 Keyword(Kw::For) => self.configuration_specification(),
@@ -35,23 +35,35 @@ impl<T: TokenStream> Parser<T> {
         }
     }
 
-    pub fn subprogram_declaration(&mut self) {}
+    pub fn configuration_specification(&mut self) {
+        todo!()
+    }
 
-    pub fn package_instantiation_declaration(&mut self) {}
+    pub fn file_declaration(&mut self) {
+        todo!()
+    }
 
-    pub fn configuration_specification(&mut self) {}
+    pub fn variable_declaration(&mut self) {
+        todo!()
+    }
 
-    pub fn file_declaration(&mut self) {}
+    pub fn constant_declaration(&mut self) {
+        todo!()
+    }
 
-    pub fn variable_declaration(&mut self) {}
+    pub fn signal_declaration(&mut self) {
+        todo!()
+    }
 
-    pub fn constant_declaration(&mut self) {}
+    pub(crate) fn attribute(&mut self) {
+        todo!()
+    }
 
-    pub fn signal_declaration(&mut self) {}
+    pub fn use_clause(&mut self) {
+        todo!()
+    }
 
-    pub(crate) fn attribute(&mut self) {}
-
-    pub fn use_clause(&mut self) {}
-
-    pub fn view_declaration(&mut self) {}
+    pub fn view_declaration(&mut self) {
+        todo!()
+    }
 }

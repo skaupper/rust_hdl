@@ -47,6 +47,10 @@ impl<T: TokenStream> Parser<T> {
         self.declarative_part()
     }
 
+    pub(crate) fn statement_part(&mut self) {
+        todo!()
+    }
+
     pub fn block_statement_part(&mut self) {
         todo!()
     }

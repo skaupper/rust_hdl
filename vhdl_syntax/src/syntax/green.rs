@@ -116,6 +116,10 @@ impl GreenNodeData {
             .iter()
             .fold(0, |acc, next| acc + next.byte_len())
     }
+
+    pub(crate) fn set_kind(&mut self, kind: NodeKind) {
+        self.kind = kind
+    }
 }
 
 impl GreenNode {

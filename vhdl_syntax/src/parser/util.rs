@@ -156,6 +156,10 @@ impl<T: TokenStream> Parser<T> {
         self.builder.end_node()
     }
 
+    pub(crate) fn end_node_with_kind(&mut self, kind: NodeKind) {
+        self.builder.end_node_with_kind(kind)
+    }
+
     pub(crate) fn eof_err(&mut self) {
         if !self.unexpected_eof {
             self.unexpected_eof = true;
