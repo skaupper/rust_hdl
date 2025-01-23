@@ -12,7 +12,7 @@ use crate::tokens::token_kind::Keyword as Kw;
 use crate::tokens::token_kind::TokenKind::*;
 
 impl<T: TokenStream> Parser<T> {
-    fn alias_declaration(&mut self) {
+    pub fn alias_declaration(&mut self) {
         self.start_node(AliasDeclaration);
         self.expect_kw(Kw::Alias);
         self.designator();

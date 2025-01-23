@@ -34,5 +34,11 @@ pub enum NodeKind {
     EntityDesignator,
     Label,
     BlockStatement,
+    BlockHeader,
+    ProcessStatement,
+    TypeDeclaration,
+    SubtypeDeclaration,
+    TypeDefinition,
+    AccessTypeDefinition,
     InterfaceObjectDeclaration, // ...
 }

@@ -1,6 +1,4 @@
 //! Facilities for parsing an input file or string into a [SyntaxNode]
-
-use std::collections::VecDeque;
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -9,6 +7,7 @@ use std::collections::VecDeque;
 use crate::parser::diagnostics::ParserDiagnostic;
 use crate::syntax::node::SyntaxNode;
 use crate::tokens::{Token, TokenStream, Tokenize};
+use std::collections::VecDeque;
 
 mod builder;
 pub mod diagnostics;

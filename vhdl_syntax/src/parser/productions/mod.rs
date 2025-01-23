@@ -4,9 +4,11 @@
 //
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 mod alias_declaration;
+mod association_lists;
 mod attributes;
-mod component_declaraion;
+mod component_declaration;
 mod concurrent_statement;
+mod declarations;
 mod design;
 mod entity;
 mod expression;
@@ -16,3 +18,4 @@ mod names;
 mod signature;
 mod statements;
 mod subtype;
+mod types;

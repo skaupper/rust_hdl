@@ -73,6 +73,11 @@ impl Symbol {
 
 #[derive(Debug)]
 struct SymbolInner {
+    // One should benchmark whether `TokenKind` should be included here or directly
+    // in the token.
+    // Practically, this is a performance <-> space tradeoff: In this implementation, the kind
+    // is always used behind a pointer -> indirection.
+    // On the other hand, this reduces the size of a token by roughly size_of(TokenKind)
     kind: TokenKind,
     // There is some optimization opportunity here.
     // The `SymbolInner` could store a `str` and the `TokenKind`
