@@ -299,6 +299,31 @@ TypeDeclaration
     }
 
     #[test]
+    fn range_declaration() {
+        check(
+            Parser::type_declaration,
+            "type positive_t is range 0 to C_MAX;",
+            "\
+TypeDeclaration
+  Keyword(Type)
+  Identifier 'positive_t'
+  Keyword(Is)
+  TypeDefinition
+    ScalarTypeDefinition
+      RangeConstraint
+        Keyword(Range)
+        Range
+          SimpleExpression
+            AbstractLiteral
+          Keyword(To)
+          SimpleExpression
+            Identifier 'C_MAX'
+  SemiColon
+",
+        );
+    }
+
+    #[test]
     fn range() {
         check(
             Parser::range,
