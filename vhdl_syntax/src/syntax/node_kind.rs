@@ -59,5 +59,16 @@ pub enum NodeKind {
     SubprogramBody,
     ProcedureSpecification,
     FunctionSpecification,
+    ComponentInstantiationStatement,
+    ConfigurationInstantiationStatement,
+    EntityInstantiationStatement,
+    ForGenerateStatement,
+    IfGenerateStatement,
+    CaseGenerateStatement,
+    ConcurrentAssertionStatement,
+    CaseGenerateAlternative,
+    ParameterSpecification,
+    GenerateStatementBody,
+    Assertion,
     InterfaceObjectDeclaration, // ...
 }

@@ -36,4 +36,8 @@ impl<T: TokenStream> Parser<T> {
             self.end_node();
         }
     }
+
+    pub fn choices(&mut self) {
+        todo!()
+    }
 }

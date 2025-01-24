@@ -148,6 +148,10 @@ impl<T: TokenStream> Parser<T> {
         }
     }
 
+    pub(crate) fn start_unknown_node(&mut self) {
+        self.start_node(NodeKind::AttributeDeclaration)
+    }
+
     pub(crate) fn start_node(&mut self, kind: NodeKind) {
         self.builder.start_node(kind)
     }

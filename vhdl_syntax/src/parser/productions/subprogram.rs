@@ -76,7 +76,7 @@ impl<T: TokenStream> Parser<T> {
         self.expect_kw(Kw::Is);
         self.declarative_part();
         self.expect_kw(Kw::Begin);
-        self.statement_part();
+        self.concurrent_statements();
         self.expect_kw(Kw::End);
         self.subprogram_kind();
         self.opt_designator();
