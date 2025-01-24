@@ -198,7 +198,23 @@ impl<T: TokenStream> Parser<T> {
         &mut self,
         kinds: [TokenKind; N],
     ) -> Result<(TokenKind, usize), usize> {
-        self.lookahead_max_token_index(usize::MAX, kinds)
+        self.lookahead_max_token_index_skip_n(usize::MAX, 0, kinds)
+    }
+
+    pub(crate) fn lookahead_skip_n<const N: usize>(
+        &mut self,
+        skip_n: usize,
+        kinds: [TokenKind; N],
+    ) -> Result<(TokenKind, usize), usize> {
+        self.lookahead_max_token_index_skip_n(usize::MAX, skip_n, kinds)
+    }
+
+    pub(crate) fn lookahead_max_token_index<const N: usize>(
+        &mut self,
+        maximum_index: usize,
+        kinds: [TokenKind; N],
+    ) -> Result<(TokenKind, usize), usize> {
+        self.lookahead_max_token_index_skip_n(maximum_index, 0, kinds)
     }
 
     /// Lookahead in the current token stream until one of the given `TokenKind`s are found.
@@ -206,12 +222,13 @@ impl<T: TokenStream> Parser<T> {
     /// In case of an error (EOF or a nesting error) the index at which the lookahead ended is returned.
     ///
     /// TODO: For better error handling you probably will need a way to differentiate between EOF and nesting errors!
-    pub(crate) fn lookahead_max_token_index<const N: usize>(
+    pub(crate) fn lookahead_max_token_index_skip_n<const N: usize>(
         &mut self,
         maximum_index: usize,
+        skip_n: usize,
         kinds: [TokenKind; N],
     ) -> Result<(TokenKind, usize), usize> {
-        let mut length = 0;
+        let mut length = skip_n;
         let mut paren_count = 0;
 
         while self.token_index + length <= maximum_index && paren_count >= 0 {
