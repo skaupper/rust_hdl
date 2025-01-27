@@ -132,8 +132,7 @@ impl<T: TokenStream> Parser<T> {
             {
                 self.start_node(SliceName);
                 self.expect_token(LeftPar);
-                let closing_paren_distance = self.distance_to_closing_paren();
-                self.range(closing_paren_distance.unwrap());
+                self.discrete_range();
                 self.expect_token(RightPar);
                 self.end_node();
             } else {
@@ -285,12 +284,13 @@ Name
     Identifier 'vector'
   SliceName
     LeftPar
-    Range
-      SimpleExpression
-        AbstractLiteral
-      Keyword(Downto)
-      SimpleExpression
-        AbstractLiteral
+    DiscreteRange
+      Range
+        SimpleExpression
+          AbstractLiteral
+        Keyword(Downto)
+        SimpleExpression
+          AbstractLiteral
     RightPar
   SelectedName
     Dot

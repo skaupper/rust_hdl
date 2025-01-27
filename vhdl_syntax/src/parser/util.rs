@@ -223,18 +223,22 @@ impl<T: TokenStream> Parser<T> {
         let mut paren_found = false;
 
         while !paren_found || paren_count > 0 {
-            match self.peek_nth_token(idx) {
+            let tok = match self.peek_nth_token(idx) {
                 Some(TokenKind::LeftPar) => {
                     paren_count += 1;
                     paren_found = true;
+                    TokenKind::LeftPar
                 }
-                Some(TokenKind::RightPar) => paren_count -= 1,
-                Some(tok) => {
-                    if paren_count == 1 && kinds.contains(&tok) {
-                        return Some((tok, idx));
-                    }
+                Some(TokenKind::RightPar) => {
+                    paren_count -= 1;
+                    TokenKind::RightPar
                 }
+                Some(tok) => tok,
                 None => return None,
+            };
+
+            if paren_count <= 1 && kinds.contains(&tok) {
+                return Some((tok, idx));
             }
             idx += 1;
         }

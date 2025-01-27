@@ -5,6 +5,7 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 /// Parsing of composite types (LRM §5.3)
 use crate::parser::Parser;
+use crate::syntax::node_kind::InternalNodeKind::*;
 use crate::syntax::node_kind::NodeKind::*;
 use crate::tokens::token_kind::Keyword as Kw;
 use crate::tokens::TokenKind::*;
@@ -75,7 +76,37 @@ impl<T: TokenStream> Parser<T> {
     }
 
     pub fn discrete_range(&mut self) {
-        todo!();
+        let possible_follow_tokens = [
+            Comma,
+            RightPar,
+            Keyword(Kw::Generate),
+            RightArrow,
+            Keyword(Kw::Loop),
+            SemiColon,
+            Bar,
+        ];
+        self.start_node(DiscreteRange);
+        let (_, length) = match self.lookahead_in_parens(possible_follow_tokens) {
+            Some(tup) => tup,
+            None => {
+                self.eof_err();
+                return;
+            }
+        };
+
+        // TODO: That's not exactly true. A `range` may also consist of a single `attribute_name`
+        let is_range = self
+            .lookahead_max_distance(length, [Keyword(Kw::To), Keyword(Kw::Downto)])
+            .is_some();
+
+        if is_range {
+            self.range(length);
+        } else {
+            self.start_node(Internal(DiscreteRangeTokens));
+            self.skip_n(length);
+            self.end_node();
+        }
+        self.end_node();
     }
 }
 
@@ -142,7 +173,6 @@ TypeDeclaration
     }
 
     #[test]
-    #[ignore = "parsing of discrete_range is currently not supported"]
     fn array_type_declaration_with_discrete_range() {
         check(
             Parser::type_declaration,
@@ -155,13 +185,16 @@ TypeDeclaration
   TypeDefinition
     ArrayTypeDefinition
       Keyword(Array)
-      LeftPar
-      DiscreteRange
-        Range
-          AbstractLiteral
-          Keyword(To)
-          AbstractLiteral
-      RightPar
+      IndexConstraint
+        LeftPar
+        DiscreteRange
+          Range
+            SimpleExpression
+              AbstractLiteral
+            Keyword(To)
+            SimpleExpression
+              AbstractLiteral
+        RightPar
       Keyword(Of)
       Identifier 'positive'
   SemiColon
@@ -179,26 +212,30 @@ TypeDeclaration
   TypeDefinition
     ArrayTypeDefinition
       Keyword(Array)
-      LeftPar
-      DiscreteRange
-        Range
-          AbstractLiteral
-          Keyword(Downto)
-          AbstractLiteral
-      Comma
-      DiscreteRange
-        Range
-          CharacterLiteral
-          Keyword(To)
-          CharacterLiteral
-      Comma
-      DiscreteRange
-        Name
-          Identifier 'enum_t'
-          AttributeName
+      IndexConstraint
+        LeftPar
+        DiscreteRange
+          Range
+            SimpleExpression
+              AbstractLiteral
+            Keyword(Downto)
+            SimpleExpression
+              AbstractLiteral
+        Comma
+        DiscreteRange
+          Range
+            SimpleExpression
+              CharacterLiteral ''A''
+            Keyword(To)
+            SimpleExpression
+              CharacterLiteral ''B''
+        Comma
+        DiscreteRange
+          Internal(DiscreteRangeTokens)
+            Identifier 'enum_t'
             Tick
-            Identifier 'range'
-      RightPar
+            Keyword(Range)
+        RightPar
       Keyword(Of)
       Identifier 'bit'
   SemiColon

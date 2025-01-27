@@ -15,6 +15,7 @@ mod identifier;
 mod interface;
 mod names;
 mod object_declaration;
+mod package;
 mod protected_types;
 mod scalar_types;
 mod signature;

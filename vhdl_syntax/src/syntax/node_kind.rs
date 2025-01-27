@@ -8,6 +8,8 @@
 pub enum InternalNodeKind {
     ActualPartTokens,
     SubtypeIndicationOrExpressionTokens,
+    SubtypeIndicationTokens,
+    DiscreteRangeTokens,
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -27,6 +29,8 @@ pub enum NodeKind {
     ArchitectureBody,
     PackageBody,
     EntityHeader,
+    PackageHeader,
+    PackageDeclarativePart,
     ConstantDeclaration,
     SignalDeclaration,
     VariableDeclaration,
@@ -50,6 +54,7 @@ pub enum NodeKind {
     SecondaryUnitDeclaration,
     ElementDeclaration,
     SubtypeDeclaration,
+    DiscreteRange,
     DesignUnit,
     DesignFile,
     ContextClause,
@@ -58,6 +63,7 @@ pub enum NodeKind {
     ContextReference,
     GenericClause,
     PortClause,
+    GenericMapAspect,
     InterfaceList,
     IdentifierList,
     DesignatorList,
