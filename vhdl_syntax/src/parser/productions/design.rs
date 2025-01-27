@@ -34,7 +34,23 @@ impl<T: TokenStream> Parser<T> {
         match_next_token!(self,
             Keyword(Kw::Entity) => self.entity(),
             Keyword(Kw::Configuration) => todo!(),
-            Keyword(Kw::Package) => todo!(),
+            Keyword(Kw::Package) => {
+                let is_pkg_inst_decl = self.next_is_seq([
+                    Keyword(Kw::Package),
+                    Identifier,
+                    Keyword(Kw::Is),
+                    Keyword(Kw::New),
+                ]);
+                let is_pkg_body = self.next_is_seq([Keyword(Kw::Package), Keyword(Kw::Body)]);
+
+                if is_pkg_inst_decl {
+                    self.package_instantiation_declaration();
+                } else if is_pkg_body {
+                    self.package_body();
+                } else {
+                    self.package_declaration();
+                }
+            },
             Keyword(Kw::Context) => todo!(),
             Keyword(Kw::Architecture) => todo!()
         );

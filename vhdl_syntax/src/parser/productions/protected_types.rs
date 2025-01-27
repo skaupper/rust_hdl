@@ -25,18 +25,12 @@ impl<T: TokenStream> Parser<T> {
         self.start_node(ProtectedTypeDeclaration);
         self.expect_kw(Kw::Protected);
 
-        while !self.next_is(Keyword(Kw::End)) {
-            self.protected_type_declarative_item();
-        }
+        self.protected_type_declarative_part();
 
         self.expect_kw(Kw::End);
         self.expect_kw(Kw::Protected);
         self.opt_identifier();
         self.end_node();
-    }
-
-    pub fn protected_type_declarative_item(&mut self) {
-        todo!();
     }
 
     pub fn protected_type_body(&mut self) {
@@ -44,19 +38,13 @@ impl<T: TokenStream> Parser<T> {
         self.expect_kw(Kw::Protected);
         self.expect_kw(Kw::Body);
 
-        while !self.next_is(Keyword(Kw::End)) {
-            self.protected_type_body_declarative_item();
-        }
+        self.protected_type_body_declarative_part();
 
         self.expect_kw(Kw::End);
         self.expect_kw(Kw::Protected);
         self.expect_kw(Kw::Body);
         self.opt_identifier();
         self.end_node();
-    }
-
-    pub fn protected_type_body_declarative_item(&mut self) {
-        todo!();
     }
 }
 
@@ -79,6 +67,7 @@ TypeDeclaration
     ProtectedTypeDefinition
       ProtectedTypeDeclaration
         Keyword(Protected)
+        ProtectedTypeDeclarativePart
         Keyword(End)
         Keyword(Protected)
   SemiColon
@@ -97,6 +86,7 @@ TypeDeclaration
     ProtectedTypeDefinition
       ProtectedTypeDeclaration
         Keyword(Protected)
+        ProtectedTypeDeclarativePart
         Keyword(End)
         Keyword(Protected)
         Identifier 'p_t'
@@ -122,6 +112,7 @@ TypeDeclaration
       ProtectedTypeBody
         Keyword(Protected)
         Keyword(Body)
+        ProtectedTypeBodyDeclarativePart
         Keyword(End)
         Keyword(Protected)
         Keyword(Body)
@@ -141,6 +132,7 @@ TypeDeclaration
       ProtectedTypeBody
         Keyword(Protected)
         Keyword(Body)
+        ProtectedTypeBodyDeclarativePart
         Keyword(End)
         Keyword(Protected)
         Keyword(Body)

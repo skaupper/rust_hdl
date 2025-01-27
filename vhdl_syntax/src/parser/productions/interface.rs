@@ -11,9 +11,12 @@ use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
 
 impl<T: TokenStream> Parser<T> {
-    pub fn opt_generic_clause(&mut self) {
+    pub fn opt_generic_clause(&mut self) -> bool {
         if self.next_is(Keyword(Kw::Generic)) {
             self.generic_clause();
+            true
+        } else {
+            false
         }
     }
 
@@ -23,6 +26,22 @@ impl<T: TokenStream> Parser<T> {
         self.expect_token(LeftPar);
         self.interface_list();
         self.expect_tokens([RightPar, SemiColon]);
+        self.end_node();
+    }
+
+    pub fn opt_generic_map_aspect(&mut self) -> bool {
+        if !self.next_is(Keyword(Kw::Generic)) || self.next_nth_is(Keyword(Kw::Map), 1) {
+            return false;
+        }
+        self.generic_map_aspect();
+        true
+    }
+
+    pub fn generic_map_aspect(&mut self) {
+        self.start_node(GenericMapAspect);
+        self.expect_tokens([Keyword(Kw::Generic), Keyword(Kw::Map), LeftPar]);
+        self.association_list();
+        self.expect_token(RightPar);
         self.end_node();
     }
 

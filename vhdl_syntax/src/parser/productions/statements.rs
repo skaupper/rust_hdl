@@ -12,4 +12,8 @@ impl<T: TokenStream> Parser<T> {
     pub fn labeled_concurrent_statements(&self) {
         // unimplemented!()
     }
+
+    pub(crate) fn opt_sequential_statement(&mut self) -> bool {
+        todo!();
+    }
 }

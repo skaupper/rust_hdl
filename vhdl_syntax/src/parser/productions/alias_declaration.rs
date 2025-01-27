@@ -12,7 +12,7 @@ use crate::tokens::token_kind::Keyword as Kw;
 use crate::tokens::token_kind::TokenKind::*;
 
 impl<T: TokenStream> Parser<T> {
-    fn alias_declaration(&mut self) {
+    pub(crate) fn alias_declaration(&mut self) {
         self.start_node(AliasDeclaration);
         self.expect_kw(Kw::Alias);
         self.designator();
@@ -52,6 +52,25 @@ AliasDeclaration
     }
 
     #[test]
+    fn parse_alias_with_subtype_indication_simple() {
+        check(
+            Parser::alias_declaration,
+            "alias foo : vector is name;",
+            "\
+AliasDeclaration
+  Keyword(Alias)
+  Identifier 'foo'
+  Colon
+  Identifier 'vector'
+  Keyword(Is)
+  Name
+    Identifier 'name'
+  SemiColon
+",
+        );
+    }
+
+    #[test]
     #[ignore]
     fn parse_alias_with_subtype_indication() {
         check(
@@ -62,12 +81,25 @@ AliasDeclaration
     }
 
     #[test]
-    #[ignore]
     fn parse_alias_with_signature() {
         check(
             Parser::alias_declaration,
             "alias foo is name [return natural];",
-            todo!(),
+            "\
+AliasDeclaration
+  Keyword(Alias)
+  Identifier 'foo'
+  Keyword(Is)
+  Name
+    Identifier 'name'
+  Signature
+    LeftSquare
+    Keyword(Return)
+    Name
+      Identifier 'natural'
+    RightSquare
+  SemiColon
+",
         );
     }
 

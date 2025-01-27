@@ -53,7 +53,7 @@ macro_rules! match_next_token_consume {
     };
     (@inner $parser:expr, [[ $($($pattern:pat_param),+ => $action:expr),+ ]], [[ $($($pattern_expr:expr),+ => $_action_expr:expr),+ ]]) => {
         match $parser.peek_token() {
-            $(Some($pattern) => {
+            $(Some($($pattern)|+) => {
                 $parser.skip();
                 $action
             }),+
@@ -134,6 +134,20 @@ impl<T: TokenStream> Parser<T> {
 
     pub(crate) fn next_nth_is(&self, kind: TokenKind, n: usize) -> bool {
         self.peek_nth_token(n) == Some(kind)
+    }
+
+    pub(crate) fn next_is_seq<const N: usize>(&mut self, kinds: [TokenKind; N]) -> bool {
+        self.next_is_seq_skip(0, kinds)
+    }
+
+    pub(crate) fn next_is_seq_skip<const N: usize>(
+        &mut self,
+        skip_n: usize,
+        kinds: [TokenKind; N],
+    ) -> bool {
+        (skip_n..)
+            .zip(kinds.iter())
+            .all(|(idx, tok)| self.peek_nth_token(idx) == Some(*tok))
     }
 
     pub(crate) fn expect_kw(&mut self, kind: Keyword) {
