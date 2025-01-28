@@ -70,5 +70,11 @@ pub enum NodeKind {
     ParameterSpecification,
     GenerateStatementBody,
     Assertion,
+    ConcurrentSelectedSignalAssignmentStatement,
+    SelectedWaveforms,
+    SelectedWaveform,
+    Waveform,
+    WaveformElement,
+    DelayMechanism,
     InterfaceObjectDeclaration, // ...
 }

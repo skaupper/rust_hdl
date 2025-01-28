@@ -116,15 +116,87 @@ impl<T: TokenStream> Parser<T> {
                         self.end_node_with_kind(ConcurrentAssertionStatement);
                     }
                     Some(Keyword(Kw::With)) => {
-                        todo!()
+                        self.concurrent_selected_signal_assignment_inner();
+                        self.end_node_with_kind(ConcurrentSelectedSignalAssignmentStatement);
                     }
                     _ => todo!()
                 }
             },
             Keyword(Kw::With) => {
-                todo!()
+                self.concurrent_selected_signal_assignment_inner();
+                self.end_node_with_kind(ConcurrentSelectedSignalAssignmentStatement);
             }
+            // _ => todo!()
         );
+    }
+
+    fn concurrent_selected_signal_assignment_inner(&mut self) {
+        self.opt_token(Keyword(Kw::Postponed));
+        self.expect_kw(Kw::With);
+        self.expression();
+        self.expect_kw(Kw::Select);
+        self.opt_token(Que);
+        self.target();
+        self.expect_token(LTE);
+        self.opt_token(Keyword(Kw::Guarded));
+        self.opt_delay_mechanism();
+        self.selected_waveforms();
+        self.expect_token(SemiColon);
+    }
+
+    pub fn selected_waveforms(&mut self) {
+        self.start_node(SelectedWaveforms);
+        self.separated_list(Parser::selected_waveform, Comma);
+        self.end_node();
+    }
+
+    fn selected_waveform(&mut self) {
+        self.start_node(SelectedWaveform);
+        self.waveform();
+        self.expect_kw(Kw::When);
+        self.choices();
+        self.end_node();
+    }
+
+    pub fn waveform(&mut self) {
+        self.start_node(Waveform);
+        if self.opt_token(Keyword(Kw::Unaffected)) {
+            self.end_node();
+            return;
+        }
+        self.separated_list(Parser::waveform_element, Comma);
+        self.end_node();
+    }
+
+    pub fn waveform_element(&mut self) {
+        self.start_node(WaveformElement);
+        self.expression();
+        if self.opt_token(Keyword(Kw::After)) {
+            self.expression();
+        }
+        self.end_node()
+    }
+
+    fn opt_delay_mechanism(&mut self) {
+        match self.peek_token() {
+            Some(Keyword(Kw::Transport | Kw::Inertial)) => {
+                self.start_node(DelayMechanism);
+                self.skip();
+                self.end_node();
+            }
+            Some(Keyword(Kw::Reject)) => {
+                self.start_node(DelayMechanism);
+                self.skip();
+                self.expression();
+                self.expect_kw(Kw::Inertial);
+                self.end_node();
+            }
+            _ => {}
+        }
+    }
+
+    pub fn target(&mut self) {
+        self.name()
     }
 
     fn concurrent_assert_statement_inner(&mut self) {

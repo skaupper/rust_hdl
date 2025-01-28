@@ -34,7 +34,7 @@ macro_rules! match_next_token {
     ($parser:expr, $($body:tt)*) => {
         match_next_token!(@inner $parser, [[ $($body)* ]], [[ $($body)* ]])
     };
-    (@inner $parser:expr, [[ $($($pattern:pat_param),+ => $action:expr),+ ]], [[ $($($pattern_expr:expr),+ => $_action_expr:expr),+ ]]) => {
+    (@inner $parser:expr, [[ $($($pattern:pat_param),+ => $action:expr),+ $(,)? ]], [[ $($($pattern_expr:expr),+ => $_action_expr:expr),+ $(,)? ]]) => {
         match $parser.peek_token() {
             $(Some($($pattern)|+) => $action),+,
             None => $parser.eof_err(),
@@ -44,7 +44,7 @@ macro_rules! match_next_token {
 }
 
 /// Allows match-style syntax for tokens.
-/// This functino consumes the next token, if found.
+/// This function consumes the next token, if found.
 /// If the token was not seen, or the parser is at EOF, this function pushes an error.
 #[macro_export]
 macro_rules! match_next_token_consume {
