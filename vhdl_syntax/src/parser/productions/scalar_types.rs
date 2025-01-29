@@ -9,16 +9,19 @@ use crate::syntax::node_kind::NodeKind::*;
 use crate::tokens::{Keyword as Kw, TokenKind::*, TokenStream};
 
 impl<T: TokenStream> Parser<T> {
-    pub fn range(&mut self, max_length: usize) {
+    pub fn range(&mut self) {
+        self.range_bounded(usize::MAX);
+    }
+    fn range_bounded(&mut self, max_index: usize) {
         // LRM §5.2.1
 
-        // `max_length` should give the distance between the current token position and the end of the range to parse.
+        // `max_index` should point to the end of the range to parse (exclusive).
         // This way the parser can use a bounded lookahead to distinguish between range expressions (using `to` or `downto`) and attribute names.
         self.start_node(Range);
 
         let is_range_expression = self
-            .lookahead_max_distance(max_length, [Keyword(Kw::To), Keyword(Kw::Downto)])
-            .is_some();
+            .lookahead_max_token_index(max_index, [Keyword(Kw::To), Keyword(Kw::Downto)])
+            .is_ok();
 
         if is_range_expression {
             self.simple_expression();
@@ -39,7 +42,7 @@ mod tests {
     #[test]
     fn parse_range() {
         check(
-            |parser| Parser::range(parser, usize::MAX),
+            Parser::range,
             "100 downto 10",
             "\
 Range
@@ -52,7 +55,7 @@ Range
         );
 
         check(
-            |parser| Parser::range(parser, usize::MAX),
+            Parser::range,
             "0 to 0",
             "\
 Range
@@ -65,7 +68,7 @@ Range
         );
 
         check(
-            |parser| Parser::range(parser, usize::MAX),
+            Parser::range,
             "slv32_t'range",
             "\
 Range

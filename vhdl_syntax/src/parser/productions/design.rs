@@ -42,6 +42,7 @@ impl<T: TokenStream> Parser<T> {
     }
 
     pub fn context_clause(&mut self) {
+        self.start_node(NodeKind::ContextClause);
         loop {
             match self.tokenizer.peek_next() {
                 Some(tok) => match tok.kind() {
@@ -53,11 +54,12 @@ impl<T: TokenStream> Parser<T> {
                 _ => self.eof_err(),
             }
         }
+        self.end_node();
     }
 
     pub fn library_clause(&mut self) {
         self.start_node(NodeKind::LibraryClause);
-        self.expect_token(Keyword(Kw::Library));
+        self.expect_kw(Kw::Library);
         self.identifier_list();
         self.expect_token(SemiColon);
         self.end_node();
@@ -65,7 +67,7 @@ impl<T: TokenStream> Parser<T> {
 
     pub fn use_clause(&mut self) {
         self.start_node(NodeKind::UseClause);
-        self.expect_token(Keyword(Kw::Use));
+        self.expect_kw(Kw::Use);
         self.name_list();
         self.expect_token(SemiColon);
         self.end_node();
@@ -78,29 +80,25 @@ impl<T: TokenStream> Parser<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{CanParse, Parser};
-    use crate::tokens;
-    use crate::tokens::IntoTokenStream;
-    use pretty_assertions::assert_eq;
+    use crate::parser::{test_utils::check, Parser};
 
     #[test]
     fn parse_simple_entity() {
-        let (entity, _) = tokens! {
-            entity my_ent is
-            begin
-            end my_ent;
+        check(
+            Parser::design_file,
+            "\
+entity my_ent is
+begin
+end my_ent;
 
-            entity my_ent2 is
-            begin
-            end entity;
-        }
-        .into_token_stream()
-        .parse_syntax(Parser::design_file);
-        assert_eq!(
-            entity.test_text(),
+entity my_ent2 is
+begin
+end entity;
+",
             "\
 DesignFile
   DesignUnit
+    ContextClause
     EntityDeclaration
       Keyword(Entity)
       Identifier 'my_ent'
@@ -111,6 +109,7 @@ DesignFile
       Identifier 'my_ent'
       SemiColon
   DesignUnit
+    ContextClause
     EntityDeclaration
       Keyword(Entity)
       Identifier 'my_ent2'
@@ -120,43 +119,43 @@ DesignFile
       Keyword(End)
       Keyword(Entity)
       SemiColon
-"
+",
         );
     }
 
     #[test]
     fn parse_entity_with_context_clause() {
-        let (design, _) = "\
+        check(
+            Parser::design_file,
+            "\
             library ieee;
             use ieee.std_logic_1164.all;
 
             entity my_ent is
             begin
             end my_ent;
-        "
-        .parse_syntax(Parser::design_file);
-        assert_eq!(
-            design.test_text(),
+        ",
             "\
 DesignFile
   DesignUnit
-    LibraryClause
-      Keyword(Library)
-      IdentifierList
-        Identifier 'ieee'
-      SemiColon
-    UseClause
-      Keyword(Use)
-      NameList
-        Name
+    ContextClause
+      LibraryClause
+        Keyword(Library)
+        IdentifierList
           Identifier 'ieee'
-          SelectedName
-            Dot
-            Identifier 'std_logic_1164'
-          SelectedName
-            Dot
-            Keyword(All)
-      SemiColon
+        SemiColon
+      UseClause
+        Keyword(Use)
+        NameList
+          Name
+            Identifier 'ieee'
+            SelectedName
+              Dot
+              Identifier 'std_logic_1164'
+            SelectedName
+              Dot
+              Keyword(All)
+        SemiColon
     EntityDeclaration
       Keyword(Entity)
       Identifier 'my_ent'
@@ -166,17 +165,15 @@ DesignFile
       Keyword(End)
       Identifier 'my_ent'
       SemiColon
-"
+",
         );
     }
 
     #[test]
     fn parse_use_clause() {
-        let (node, diag) = "use lib1.lib2.lib3.all;".parse_syntax(Parser::use_clause);
-        assert_eq!(diag.len(), 0);
-
-        assert_eq!(
-            node.test_text(),
+        check(
+            Parser::use_clause,
+            "use lib1.lib2.lib3.all;",
             "\
 UseClause
   Keyword(Use)
@@ -193,7 +190,7 @@ UseClause
         Dot
         Keyword(All)
   SemiColon
-"
+",
         );
     }
 }

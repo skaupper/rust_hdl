@@ -5,7 +5,6 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 use crate::parser::Parser;
-use crate::syntax::node_kind::InternalNodeKind::*;
 use crate::syntax::node_kind::NodeKind::*;
 use crate::tokens::Keyword as Kw;
 use crate::tokens::TokenKind::*;
@@ -41,10 +40,6 @@ fn is_start_of_attribute_name<T: TokenStream>(parser: &mut Parser<T>) -> bool {
 }
 
 impl<T: TokenStream> Parser<T> {
-    pub fn designator(&mut self) {
-        self.expect_one_of_tokens([Identifier, StringLiteral, CharacterLiteral]);
-    }
-
     pub fn name(&mut self) {
         // (Based on) LRM §8.1
         // The LRM grammar rules for names were transformed to avoid left recursion.
@@ -56,7 +51,7 @@ impl<T: TokenStream> Parser<T> {
         if self.next_is(LtLt) {
             self.external_name();
         } else {
-            self.designator();
+            self.expect_one_of_tokens([Identifier, StringLiteral, CharacterLiteral]);
         }
 
         self.name_tail();
@@ -67,14 +62,19 @@ impl<T: TokenStream> Parser<T> {
         self.name()
     }
 
-    pub fn opt_label(&mut self) {
+    pub(crate) fn designator(&mut self) {
+        // TODO: That designator is not fully LRM compliant
+        self.expect_one_of_tokens([Identifier, StringLiteral, CharacterLiteral]);
+    }
+
+    pub(crate) fn opt_label(&mut self) {
         if self.next_is(Identifier) && self.next_nth_is(Colon, 1) {
             self.start_node(Label);
             self.skip_n(2);
             self.end_node();
         }
     }
-    pub fn name_list(&mut self) {
+    pub(crate) fn name_list(&mut self) {
         self.start_node(NameList);
         self.separated_list(Parser::name, Comma);
         self.end_node();
@@ -107,50 +107,24 @@ impl<T: TokenStream> Parser<T> {
             self.end_node();
             self.name_tail();
         } else if self.next_is(LeftPar) {
-            // Try to differentiate between function calls, indexed names and slices as good as possible:
-            // 1. An `association_list` can be uniquely identified by searching for a '=>' inside the parenthesis
-            // 2. When at least a single comma is found, try parse the contents as an expression list
-            // 3. When the `to` or `downto` keyword is found, parse the content as a slice name
-            //
-            // If none of these apply, it can be either a `subtype_indication` or a single `expression`
-
-            if self.lookahead_in_parens([RightArrow]).is_some() {
-                self.start_node(FunctionCallOrIndexedName);
-                self.expect_token(LeftPar);
-                self.association_list();
-                self.expect_token(RightPar);
-                self.end_node();
-            } else if self.lookahead_in_parens([Comma]).is_some() {
-                self.start_node(FunctionCallOrIndexedName);
-                self.expect_token(LeftPar);
-                self.expression_list();
-                self.expect_token(RightPar);
-                self.end_node();
-            } else if self
-                .lookahead_in_parens([Keyword(Kw::To), Keyword(Kw::Downto)])
-                .is_some()
-            {
-                self.start_node(SliceName);
-                self.expect_token(LeftPar);
-                let closing_paren_distance = self.distance_to_closing_paren();
-                self.range(closing_paren_distance.unwrap());
-                self.expect_token(RightPar);
-                self.end_node();
-            } else {
-                // TODO: subtype_indication or expression?
-                self.start_node(Internal(SubtypeIndicationOrExpressionTokens));
-                self.expect_token(LeftPar);
-                match self.distance_to_closing_paren() {
-                    Some(distance) => self.skip_n(distance),
-                    None => {
-                        self.end_node();
-                        self.eof_err();
-                        return;
-                    }
+            // Instead of trying to differentiate between `subtype_indication`, `association_list`, a list of `expression`s and a `discrete_range`
+            // put all tokens inside the parenthesis in a `RawTokens` node.
+            self.start_node(RawTokens);
+            self.expect_token(LeftPar);
+            match self.lookahead([RightPar]) {
+                Ok((_, end_index)) => {
+                    self.skip_to(end_index);
                 }
-                self.expect_token(RightPar);
-                self.end_node();
+                Err(_) => {
+                    // TODO: The parenthesized expression is not terminated correctly
+                    //       Find some way to handle this gracefully!
+                    self.eof_err();
+                    self.end_node();
+                    return;
+                }
             }
+            self.expect_token(RightPar);
+            self.end_node();
 
             self.name_tail();
         } else if is_start_of_attribute_name(self) {
@@ -160,7 +134,7 @@ impl<T: TokenStream> Parser<T> {
             }
             self.expect_token(Tick);
 
-            // `range` is a keyword, but may appear as a `attribute_name`
+            // `range` is a keyword, but may appear as an `attribute_name`
             if !self.opt_identifier() {
                 self.expect_kw(Kw::Range);
             }
@@ -198,35 +172,28 @@ impl<T: TokenStream> Parser<T> {
     fn external_pathname(&mut self) {
         // LRM §8.7
         self.start_node(ExternalPathName);
-        match self.peek_token() {
-            Some(CommAt) => {
-                self.expect_token(CommAt);
+        match_next_token!(self,
+        CommAt => {
+            self.expect_token(CommAt);
+            self.identifier();
+            self.expect_token(Dot);
+            self.identifier();
+            self.expect_token(Dot);
+            self.identifier();
+            while self.opt_token(Dot) {
                 self.identifier();
+            }
+        },
+        Dot => {
+            self.expect_token(Dot);
+            self.partial_pathname();
+        },
+        Circ, Identifier => {
+            while self.opt_token(Circ) {
                 self.expect_token(Dot);
-                self.identifier();
-                self.expect_token(Dot);
-                self.identifier();
-                while self.opt_token(Dot) {
-                    self.identifier();
-                }
             }
-            Some(Dot) => {
-                self.expect_token(Dot);
-                self.partial_pathname();
-            }
-            Some(Circ | Identifier) => {
-                while self.opt_token(Circ) {
-                    self.expect_token(Dot);
-                }
-                self.partial_pathname();
-            }
-            Some(_) => {
-                self.expect_tokens_err([CommAt, Dot, Circ, Identifier]);
-            }
-            None => {
-                self.eof_err();
-            }
-        }
+            self.partial_pathname();
+        });
         self.end_node();
     }
 
@@ -265,32 +232,22 @@ Name
   SelectedName
     Dot
     Identifier 'fn'
-  FunctionCallOrIndexedName
+  RawTokens
     LeftPar
-    ExpressionList
-      Expression
-        SimpleExpression
-          CharacterLiteral ''a''
-      Comma
-      Expression
-        SimpleExpression
-          AbstractLiteral
-      Comma
-      Expression
-        SimpleExpression
-          Identifier 'sig'
+    CharacterLiteral ''a''
+    Comma
+    AbstractLiteral
+    Comma
+    Identifier 'sig'
     RightPar
   SelectedName
     Dot
     Identifier 'vector'
-  SliceName
+  RawTokens
     LeftPar
-    Range
-      SimpleExpression
-        AbstractLiteral
-      Keyword(Downto)
-      SimpleExpression
-        AbstractLiteral
+    AbstractLiteral
+    Keyword(Downto)
+    AbstractLiteral
     RightPar
   SelectedName
     Dot

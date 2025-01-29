@@ -5,12 +5,6 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum InternalNodeKind {
-    ActualPartTokens,
-    SubtypeIndicationOrExpressionTokens,
-}
-
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum NodeKind {
     AttributeDeclaration,
     AttributeSpecification,
@@ -55,7 +49,7 @@ pub enum NodeKind {
     AttributeName,
     FunctionCallOrIndexedName,
     SliceName,
-    Internal(InternalNodeKind),
+    RawTokens,
     NameList,
     AssociationList,
     AssociationElement,

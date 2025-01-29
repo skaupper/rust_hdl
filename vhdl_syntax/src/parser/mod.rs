@@ -28,6 +28,7 @@ pub struct Parser<T: TokenStream> {
     builder: builder::NodeBuilder,
     diagnostics: Vec<diagnostics::ParserDiagnostic>,
     unexpected_eof: bool,
+    token_index: usize,
 }
 
 impl<T: TokenStream> Parser<T> {
@@ -37,6 +38,7 @@ impl<T: TokenStream> Parser<T> {
             builder: builder::NodeBuilder::new(),
             diagnostics: Vec::default(),
             unexpected_eof: false,
+            token_index: 0,
         }
     }
 

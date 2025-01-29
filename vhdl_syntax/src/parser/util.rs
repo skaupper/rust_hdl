@@ -67,18 +67,28 @@ impl<T: TokenStream> Parser<T> {
     pub(crate) fn skip(&mut self) {
         if let Some(token) = self.tokenizer.next() {
             self.builder.push(token);
+            self.token_index += 1;
         }
     }
 
     pub(crate) fn skip_n(&mut self, n: usize) {
         for _ in 0..n {
-            self.skip()
+            self.skip();
+            if self.peek_token().is_none() {
+                break;
+            }
         }
+    }
+
+    pub(crate) fn skip_to(&mut self, token_index: usize) {
+        assert!(token_index > self.token_index);
+        self.skip_n(token_index - self.token_index);
     }
 
     pub(crate) fn expect_token(&mut self, kind: TokenKind) {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
+            self.token_index += 1;
             return;
         }
         // TODO: what are possible recovery strategies?
@@ -133,6 +143,7 @@ impl<T: TokenStream> Parser<T> {
     pub(crate) fn opt_token(&mut self, kind: TokenKind) -> bool {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
+            self.token_index += 1;
             true
         } else {
             false
@@ -149,6 +160,7 @@ impl<T: TokenStream> Parser<T> {
         {
             let kind = token.kind();
             self.builder.push(token);
+            self.token_index += 1;
             Some(kind)
         } else {
             None
@@ -182,89 +194,56 @@ impl<T: TokenStream> Parser<T> {
         (self.builder.end(), self.diagnostics)
     }
 
-    fn distance_to_closing_paren_or_token_internal(
-        &mut self,
-        kind: Option<TokenKind>,
-    ) -> Option<usize> {
-        let mut idx = 0;
-        let mut paren_count = 1;
-
-        while paren_count > 0 {
-            match self.peek_nth_token(idx) {
-                Some(TokenKind::LeftPar) => paren_count += 1,
-                Some(TokenKind::RightPar) => paren_count -= 1,
-                Some(tok) => {
-                    if Some(tok) == kind {
-                        return Some(idx);
-                    }
-                }
-                None => return None,
-            }
-            idx += 1;
-        }
-
-        Some(idx - 1)
-    }
-
-    pub(crate) fn distance_to_closing_paren(&mut self) -> Option<usize> {
-        self.distance_to_closing_paren_or_token_internal(None)
-    }
-
-    pub(crate) fn distance_to_closing_paren_or_token(&mut self, kind: TokenKind) -> Option<usize> {
-        self.distance_to_closing_paren_or_token_internal(Some(kind))
-    }
-
-    pub(crate) fn lookahead_in_parens<const N: usize>(
+    pub(crate) fn lookahead<const N: usize>(
         &mut self,
         kinds: [TokenKind; N],
-    ) -> Option<(TokenKind, usize)> {
-        let mut idx = 0;
-        let mut paren_count = 0;
-        let mut paren_found = false;
-
-        while !paren_found || paren_count > 0 {
-            match self.peek_nth_token(idx) {
-                Some(TokenKind::LeftPar) => {
-                    paren_count += 1;
-                    paren_found = true;
-                }
-                Some(TokenKind::RightPar) => paren_count -= 1,
-                Some(tok) => {
-                    if paren_count == 1 && kinds.contains(&tok) {
-                        return Some((tok, idx));
-                    }
-                }
-                None => return None,
-            }
-            idx += 1;
-        }
-
-        None
+    ) -> Result<(TokenKind, usize), usize> {
+        self.lookahead_max_token_index(usize::MAX, kinds)
     }
 
-    pub(crate) fn lookahead_max_distance<const N: usize>(
+    /// Lookahead in the current token stream until one of the given `TokenKind`s are found.
+    /// In case of success, the matching `TokenKind` is returned, as well as the token index it was found at.
+    /// In case of an error (EOF or a nesting error) the index at which the lookahead ended is returned.
+    ///
+    /// TODO: For better error handling you probably will need a way to differentiate between EOF and nesting errors!
+    pub(crate) fn lookahead_max_token_index<const N: usize>(
         &mut self,
-        maximum_distance: usize,
+        maximum_index: usize,
         kinds: [TokenKind; N],
-    ) -> Option<(TokenKind, usize)> {
-        let mut idx = 0;
+    ) -> Result<(TokenKind, usize), usize> {
+        let mut length = 0;
         let mut paren_count = 0;
 
-        while idx < maximum_distance {
-            match self.peek_nth_token(idx) {
+        while self.token_index + length <= maximum_index && paren_count >= 0 {
+            match self.peek_nth_token(length) {
                 Some(TokenKind::LeftPar) => paren_count += 1,
-                Some(TokenKind::RightPar) => paren_count -= 1,
+                Some(TokenKind::RightPar) => {
+                    // Allow the closing parenthesis to match as well
+                    if paren_count == 0 && kinds.contains(&TokenKind::RightPar) {
+                        return Ok((TokenKind::RightPar, self.token_index + length));
+                    }
+
+                    paren_count -= 1;
+
+                    // A closing parenthesis indicates that some form of
+                    // grouping ended that was not started during this lookahead.
+                    if paren_count < 0 {
+                        return Err(self.token_index + length);
+                    }
+                }
 
                 Some(tok) => {
+                    // To avoid matching tokens in some (potentially recursive) sub expression of some sort,
+                    // only check the current token if we at the outer most grouping layer (`paren_count == 0`).
                     if paren_count == 0 && kinds.contains(&tok) {
-                        return Some((tok, idx));
+                        return Ok((tok, self.token_index + length));
                     }
                 }
-                None => return None,
+                None => return Err(self.token_index + length),
             }
-            idx += 1;
+            length += 1;
         }
 
-        None
+        Err(self.token_index + length)
     }
 }

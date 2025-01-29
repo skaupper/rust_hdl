@@ -5,7 +5,6 @@
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
 use crate::parser::Parser;
-use crate::syntax::node_kind::InternalNodeKind;
 use crate::syntax::node_kind::NodeKind::*;
 use crate::tokens::Keyword as Kw;
 use crate::tokens::TokenKind::*;
@@ -90,27 +89,33 @@ impl<T: TokenStream> Parser<T> {
     }
 
     pub fn association_list(&mut self) {
+        self.association_list_bounded(usize::MAX);
+    }
+    fn association_list_bounded(&mut self, max_index: usize) {
         self.start_node(AssociationList);
-        self.separated_list(Parser::association_element, Comma);
+        self.separated_list(
+            |parser| {
+                let end_of_element_idx =
+                    match parser.lookahead_max_token_index(max_index, [Comma, RightPar]) {
+                        Ok((_, idx)) => idx,
+                        Err(idx) => idx,
+                    };
+                parser.association_element_bounded(end_of_element_idx);
+            },
+            Comma,
+        );
         self.end_node();
     }
 
-    pub fn association_element(&mut self) {
+    fn association_element_bounded(&mut self, max_index: usize) {
         self.start_node(AssociationElement);
 
-        let right_arrow_idx = match self.distance_to_closing_paren_or_token(Comma) {
-            Some(length) => self.lookahead_max_distance(length, [RightArrow]),
-            None => {
-                self.eof_err();
-                return;
-            }
-        };
-
-        if right_arrow_idx.is_some() {
+        // TODO: Error handling is done at a bare minimum.
+        if let Ok(_) = self.lookahead_max_token_index(max_index, [RightArrow]) {
             self.formal_part();
             self.expect_token(RightArrow);
         }
-        self.actual_part();
+        self.actual_part_bounded(max_index);
 
         self.end_node();
     }
@@ -122,19 +127,11 @@ impl<T: TokenStream> Parser<T> {
         self.end_node();
     }
 
-    pub fn actual_part(&mut self) {
+    fn actual_part_bounded(&mut self, max_index: usize) {
         self.start_node(ActualPart);
-        let length = match self.distance_to_closing_paren_or_token(Comma) {
-            Some(distance) => distance,
-            None => {
-                self.eof_err();
-                return;
-            }
-        };
-
-        // TODO: Parsing of `actual_part` would boil down to `name | expression | subtype_indication`
-        self.start_node(Internal(InternalNodeKind::ActualPartTokens));
-        self.skip_n(length);
+        // Parsing of `actual_part` would boil down to `name | expression | subtype_indication`
+        self.start_node(RawTokens);
+        self.skip_to(max_index);
         self.end_node();
         self.end_node();
     }
@@ -147,28 +144,26 @@ mod tests {
 
     #[test]
     fn association_list() {
-        // Make sure the association list is followed by a closing parenthesis, otherwise parsing will fail
-        // In reality that shouldn't be a problem, since association lists are always to be enclosed in parenthesis!
         check(
             Parser::association_list,
-            "arg1, arg2)",
+            "arg1, arg2",
             "\
 AssociationList
   AssociationElement
     ActualPart
-      Internal(ActualPartTokens)
+      RawTokens
         Identifier 'arg1'
   Comma
   AssociationElement
     ActualPart
-      Internal(ActualPartTokens)
+      RawTokens
         Identifier 'arg2'
 ",
         );
 
         check(
             Parser::association_list,
-            "p1 => 1, std_ulogic(p2)=>     sl_sig)",
+            "p1 => 1, std_ulogic(p2)=>     sl_sig",
             "\
 AssociationList
   AssociationElement
@@ -177,20 +172,20 @@ AssociationList
         Identifier 'p1'
     RightArrow
     ActualPart
-      Internal(ActualPartTokens)
+      RawTokens
         AbstractLiteral
   Comma
   AssociationElement
     FormalPart
       Name
         Identifier 'std_ulogic'
-        Internal(SubtypeIndicationOrExpressionTokens)
+        RawTokens
           LeftPar
           Identifier 'p2'
           RightPar
     RightArrow
     ActualPart
-      Internal(ActualPartTokens)
+      RawTokens
         Identifier 'sl_sig'
 ",
         );
