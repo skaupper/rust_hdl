@@ -10,10 +10,6 @@ use crate::tokens::TokenKind::*;
 use crate::tokens::TokenStream;
 
 impl<T: TokenStream> Parser<T> {
-    pub fn association_list(&mut self) {
-        self.separated_list(Parser::association_element, Comma)
-    }
-
     pub fn association_element(&mut self) {
         // TODO
     }

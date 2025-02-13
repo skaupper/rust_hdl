@@ -21,3 +21,4 @@ mod statements;
 mod subprogram;
 mod subtype;
 mod types;
+mod scalar_types;

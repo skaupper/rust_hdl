@@ -13,6 +13,7 @@ pub(crate) struct NodeBuilder {
     stack: Vec<(usize, GreenNodeData)>,
     rel_offset: usize,
     text_len: usize,
+    token_index: usize,
 }
 
 impl NodeBuilder {
@@ -21,6 +22,7 @@ impl NodeBuilder {
             stack: Vec::default(),
             rel_offset: 0,
             text_len: 0,
+            token_index: 0,
         }
     }
 
@@ -33,6 +35,7 @@ impl NodeBuilder {
         let offset = self.rel_offset;
         self.current().push_token(offset, token);
         self.rel_offset += tok_text_len;
+        self.token_index += 1;
     }
 
     pub fn start_node(&mut self, kind: NodeKind) {
@@ -82,5 +85,9 @@ impl NodeBuilder {
 
     pub fn current_pos(&self) -> usize {
         self.text_len
+    }
+
+    pub fn current_token_index(&self) -> usize {
+        self.token_index
     }
 }

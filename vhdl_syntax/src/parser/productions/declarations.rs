@@ -59,10 +59,6 @@ impl<T: TokenStream> Parser<T> {
         todo!()
     }
 
-    pub fn use_clause(&mut self) {
-        todo!()
-    }
-
     pub fn view_declaration(&mut self) {
         todo!()
     }

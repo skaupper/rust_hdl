@@ -41,34 +41,64 @@ impl<T: TokenStream> Parser<T> {
         self.end_node();
     }
 
-    pub fn context_clause(&mut self) {}
+    pub fn context_clause(&mut self) {
+        self.start_node(NodeKind::ContextClause);
+        loop {
+            match self.tokenizer.peek_next() {
+                Some(tok) => match tok.kind() {
+                    Keyword(Kw::Use) => self.use_clause(),
+                    Keyword(Kw::Library) => self.library_clause(),
+                    Keyword(Kw::Context) => self.context_reference(),
+                    _ => break,
+                },
+                _ => self.eof_err(),
+            }
+        }
+        self.end_node();
+    }
+
+    pub fn library_clause(&mut self) {
+        self.start_node(NodeKind::LibraryClause);
+        self.expect_kw(Kw::Library);
+        self.identifier_list();
+        self.expect_token(SemiColon);
+        self.end_node();
+    }
+
+    pub fn use_clause(&mut self) {
+        self.start_node(NodeKind::UseClause);
+        self.expect_kw(Kw::Use);
+        self.name_list();
+        self.expect_token(SemiColon);
+        self.end_node();
+    }
+
+    pub fn context_reference(&mut self) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{CanParse, Parser};
-    use crate::tokens;
-    use crate::tokens::IntoTokenStream;
-    use pretty_assertions::assert_eq;
+    use crate::parser::{test_utils::check, Parser};
 
     #[test]
     fn parse_simple_entity() {
-        let (entity, _) = tokens! {
-            entity my_ent is
-            begin
-            end my_ent;
+        check(
+            Parser::design_file,
+            "\
+entity my_ent is
+begin
+end my_ent;
 
-            entity my_ent2 is
-            begin
-            end entity;
-        }
-        .into_token_stream()
-        .parse_syntax(Parser::design_file);
-        assert_eq!(
-            entity.test_text(),
+entity my_ent2 is
+begin
+end entity;
+",
             "\
 DesignFile
   DesignUnit
+    ContextClause
     EntityDeclaration
       Keyword(Entity)
       Identifier 'my_ent'
@@ -79,6 +109,7 @@ DesignFile
       Identifier 'my_ent'
       SemiColon
   DesignUnit
+    ContextClause
     EntityDeclaration
       Keyword(Entity)
       Identifier 'my_ent2'
@@ -88,7 +119,78 @@ DesignFile
       Keyword(End)
       Keyword(Entity)
       SemiColon
-"
+",
+        );
+    }
+
+    #[test]
+    fn parse_entity_with_context_clause() {
+        check(
+            Parser::design_file,
+            "\
+            library ieee;
+            use ieee.std_logic_1164.all;
+
+            entity my_ent is
+            begin
+            end my_ent;
+        ",
+            "\
+DesignFile
+  DesignUnit
+    ContextClause
+      LibraryClause
+        Keyword(Library)
+        IdentifierList
+          Identifier 'ieee'
+        SemiColon
+      UseClause
+        Keyword(Use)
+        NameList
+          Name
+            Identifier 'ieee'
+            SelectedName
+              Dot
+              Identifier 'std_logic_1164'
+            SelectedName
+              Dot
+              Keyword(All)
+        SemiColon
+    EntityDeclaration
+      Keyword(Entity)
+      Identifier 'my_ent'
+      Keyword(Is)
+      EntityHeader
+      Keyword(Begin)
+      Keyword(End)
+      Identifier 'my_ent'
+      SemiColon
+",
+        );
+    }
+
+    #[test]
+    fn parse_use_clause() {
+        check(
+            Parser::use_clause,
+            "use lib1.lib2.lib3.all;",
+            "\
+UseClause
+  Keyword(Use)
+  NameList
+    Name
+      Identifier 'lib1'
+      SelectedName
+        Dot
+        Identifier 'lib2'
+      SelectedName
+        Dot
+        Identifier 'lib3'
+      SelectedName
+        Dot
+        Keyword(All)
+  SemiColon
+",
         );
     }
 }

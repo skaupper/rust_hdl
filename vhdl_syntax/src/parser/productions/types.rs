@@ -169,10 +169,6 @@ impl<T: TokenStream> Parser<T> {
         self.end_node();
     }
 
-    pub fn range(&mut self) {
-        todo!()
-    }
-
     pub fn discrete_range(&mut self) {
         todo!()
     }
