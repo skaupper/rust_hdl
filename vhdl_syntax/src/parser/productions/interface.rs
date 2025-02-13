@@ -98,7 +98,7 @@ impl<T: TokenStream> Parser<T> {
                 let end_of_element_idx =
                     match parser.lookahead_max_token_index(max_index, [Comma, RightPar]) {
                         Ok((_, idx)) => idx,
-                        Err(idx) => idx,
+                        Err((_, idx)) => idx,
                     };
                 parser.association_element_bounded(end_of_element_idx);
             },

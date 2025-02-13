@@ -4,6 +4,7 @@
 //
 // Copyright (c)  2025, Lukas Scheller lukasscheller@icloud.com
 
+use crate::parser::util::LookaheadError;
 use crate::parser::Parser;
 use crate::syntax::node_kind::NodeKind::*;
 use crate::tokens::Keyword as Kw;
@@ -41,6 +42,10 @@ fn is_start_of_attribute_name<T: TokenStream>(parser: &mut Parser<T>) -> bool {
 
 impl<T: TokenStream> Parser<T> {
     pub fn name(&mut self) {
+        self.name_bounded(usize::MAX);
+    }
+
+    pub(crate) fn name_bounded(&mut self, max_index: usize) {
         // (Based on) LRM §8.1
         // The LRM grammar rules for names were transformed to avoid left recursion.
 
@@ -54,7 +59,7 @@ impl<T: TokenStream> Parser<T> {
             self.expect_one_of_tokens([Identifier, StringLiteral, CharacterLiteral]);
         }
 
-        self.name_tail();
+        self.opt_name_tail_bounded(max_index);
         self.end_node();
     }
 
@@ -91,7 +96,7 @@ impl<T: TokenStream> Parser<T> {
         ]);
     }
 
-    fn name_tail(&mut self) {
+    fn opt_name_tail_bounded(&mut self, max_index: usize) -> bool {
         // name             ::= prefix [ name_tail ] ;
         // name_tail        ::= selected_name | attribute_name | indexed_name | slice_name | function_name ;
         // selected_name    ::= `.` suffix [ name_tail ] ;
@@ -105,28 +110,32 @@ impl<T: TokenStream> Parser<T> {
             self.expect_token(Dot);
             self.suffix();
             self.end_node();
-            self.name_tail();
+            self.opt_name_tail_bounded(max_index)
         } else if self.next_is(LeftPar) {
             // Instead of trying to differentiate between `subtype_indication`, `association_list`, a list of `expression`s and a `discrete_range`
             // put all tokens inside the parenthesis in a `RawTokens` node.
-            self.start_node(RawTokens);
-            self.expect_token(LeftPar);
-            match self.lookahead([RightPar]) {
-                Ok((_, end_index)) => {
-                    self.skip_to(end_index);
-                }
-                Err(_) => {
-                    // TODO: The parenthesized expression is not terminated correctly
-                    //       Find some way to handle this gracefully!
-                    self.eof_err();
-                    self.end_node();
-                    return;
-                }
-            }
-            self.expect_token(RightPar);
-            self.end_node();
+            let end_index_opt =
+                match self.lookahead_max_token_index_skip_n(max_index, 1, [RightPar]) {
+                    Ok((_, end_index)) => Some(end_index),
+                    Err((LookaheadError::MaxIndexReached, _)) => None,
+                    // Skip parsing of the parenthesized group, if EOF is reached
+                    Err((LookaheadError::Eof, _)) => None,
+                    // This error is only possible, when a `RightPar` is found before any token in `kinds`.
+                    // Since `RightPar` is in `kinds` that's not possible!
+                    Err((LookaheadError::TokenKindNotFound, _)) => unreachable!(),
+                };
 
-            self.name_tail();
+            if let Some(end_index) = end_index_opt {
+                self.start_node(RawTokens);
+                self.expect_token(LeftPar);
+                self.skip_to(end_index);
+                self.expect_token(RightPar);
+                self.end_node();
+
+                self.opt_name_tail_bounded(max_index)
+            } else {
+                false
+            }
         } else if is_start_of_attribute_name(self) {
             self.start_node(AttributeName);
             if self.next_is(LeftSquare) {
@@ -147,7 +156,9 @@ impl<T: TokenStream> Parser<T> {
                 self.end_node();
             }
             self.end_node();
-            self.name_tail();
+            self.opt_name_tail_bounded(max_index)
+        } else {
+            false
         }
     }
 

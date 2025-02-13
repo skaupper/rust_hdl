@@ -28,7 +28,6 @@ pub struct Parser<T: TokenStream> {
     builder: builder::NodeBuilder,
     diagnostics: Vec<diagnostics::ParserDiagnostic>,
     unexpected_eof: bool,
-    token_index: usize,
 }
 
 impl<T: TokenStream> Parser<T> {
@@ -38,12 +37,15 @@ impl<T: TokenStream> Parser<T> {
             builder: builder::NodeBuilder::new(),
             diagnostics: Vec::default(),
             unexpected_eof: false,
-            token_index: 0,
         }
     }
 
     pub fn diagnostics(&self) -> &[diagnostics::ParserDiagnostic] {
         &self.diagnostics
+    }
+
+    pub fn token_index(&self) -> usize {
+        self.builder.current_token_index()
     }
 
     /// Parses a design file and returns the root node.

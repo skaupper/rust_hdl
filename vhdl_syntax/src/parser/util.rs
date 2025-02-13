@@ -63,11 +63,19 @@ macro_rules! match_next_token_consume {
     };
 }
 
+pub enum LookaheadError {
+    /// EOF was encountered before any of the desired `TokenKind`s was found.
+    Eof,
+    /// The maximum index was reached before any of the desired `TokenKind`s was found.
+    MaxIndexReached,
+    /// None of the desired `TokenKind`s was found withing the current parenthesis
+    TokenKindNotFound,
+}
+
 impl<T: TokenStream> Parser<T> {
     pub(crate) fn skip(&mut self) {
         if let Some(token) = self.tokenizer.next() {
             self.builder.push(token);
-            self.token_index += 1;
         }
     }
 
@@ -81,14 +89,13 @@ impl<T: TokenStream> Parser<T> {
     }
 
     pub(crate) fn skip_to(&mut self, token_index: usize) {
-        assert!(token_index > self.token_index);
-        self.skip_n(token_index - self.token_index);
+        assert!(token_index > self.token_index());
+        self.skip_n(token_index - self.token_index());
     }
 
     pub(crate) fn expect_token(&mut self, kind: TokenKind) {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
-            self.token_index += 1;
             return;
         }
         // TODO: what are possible recovery strategies?
@@ -143,7 +150,6 @@ impl<T: TokenStream> Parser<T> {
     pub(crate) fn opt_token(&mut self, kind: TokenKind) -> bool {
         if let Some(token) = self.tokenizer.next_if(|token| token.kind() == kind) {
             self.builder.push(token);
-            self.token_index += 1;
             true
         } else {
             false
@@ -160,7 +166,6 @@ impl<T: TokenStream> Parser<T> {
         {
             let kind = token.kind();
             self.builder.push(token);
-            self.token_index += 1;
             Some(kind)
         } else {
             None
@@ -194,56 +199,55 @@ impl<T: TokenStream> Parser<T> {
         (self.builder.end(), self.diagnostics)
     }
 
-    pub(crate) fn lookahead<const N: usize>(
-        &mut self,
-        kinds: [TokenKind; N],
-    ) -> Result<(TokenKind, usize), usize> {
-        self.lookahead_max_token_index(usize::MAX, kinds)
-    }
-
-    /// Lookahead in the current token stream until one of the given `TokenKind`s are found.
-    /// In case of success, the matching `TokenKind` is returned, as well as the token index it was found at.
-    /// In case of an error (EOF or a nesting error) the index at which the lookahead ended is returned.
-    ///
-    /// TODO: For better error handling you probably will need a way to differentiate between EOF and nesting errors!
     pub(crate) fn lookahead_max_token_index<const N: usize>(
         &mut self,
         maximum_index: usize,
         kinds: [TokenKind; N],
-    ) -> Result<(TokenKind, usize), usize> {
-        let mut length = 0;
-        let mut paren_count = 0;
+    ) -> Result<(TokenKind, usize), (LookaheadError, usize)> {
+        self.lookahead_max_token_index_skip_n(maximum_index, 0, kinds)
+    }
 
-        while self.token_index + length <= maximum_index && paren_count >= 0 {
-            match self.peek_nth_token(length) {
+    /// Lookahead in the current token stream until one of the given `TokenKind`s are found.
+    /// In case of success, the matching `TokenKind` is returned, as well as the token index it was found at.
+    /// In case of an error (EOF or if none of the `TokenKind`s was found) the index at which the lookahead ended is
+    /// returned as well as the kind of error encountered.
+    pub(crate) fn lookahead_max_token_index_skip_n<const N: usize>(
+        &mut self,
+        maximum_index: usize,
+        skip_n: usize,
+        kinds: [TokenKind; N],
+    ) -> Result<(TokenKind, usize), (LookaheadError, usize)> {
+        let mut paren_count = 0;
+        let mut curr_token_index = self.token_index() + skip_n;
+
+        while curr_token_index <= maximum_index && paren_count >= 0 {
+            match self.peek_nth_token(curr_token_index - self.token_index()) {
                 Some(TokenKind::LeftPar) => paren_count += 1,
                 Some(TokenKind::RightPar) => {
                     // Allow the closing parenthesis to match as well
                     if paren_count == 0 && kinds.contains(&TokenKind::RightPar) {
-                        return Ok((TokenKind::RightPar, self.token_index + length));
+                        return Ok((TokenKind::RightPar, curr_token_index));
                     }
 
                     paren_count -= 1;
-
-                    // A closing parenthesis indicates that some form of
-                    // grouping ended that was not started during this lookahead.
-                    if paren_count < 0 {
-                        return Err(self.token_index + length);
-                    }
                 }
 
                 Some(tok) => {
                     // To avoid matching tokens in some (potentially recursive) sub expression of some sort,
                     // only check the current token if we at the outer most grouping layer (`paren_count == 0`).
                     if paren_count == 0 && kinds.contains(&tok) {
-                        return Ok((tok, self.token_index + length));
+                        return Ok((tok, curr_token_index));
                     }
                 }
-                None => return Err(self.token_index + length),
+                None => return Err((LookaheadError::Eof, curr_token_index)),
             }
-            length += 1;
+            curr_token_index += 1;
         }
 
-        Err(self.token_index + length)
+        if curr_token_index > maximum_index {
+            Err((LookaheadError::MaxIndexReached, curr_token_index))
+        } else {
+            Err((LookaheadError::TokenKindNotFound, curr_token_index))
+        }
     }
 }

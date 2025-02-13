@@ -28,7 +28,7 @@ impl<T: TokenStream> Parser<T> {
             self.expect_one_of_tokens([Keyword(Kw::To), Keyword(Kw::Downto)]);
             self.simple_expression();
         } else {
-            self.name();
+            self.name_bounded(max_index);
         }
 
         self.end_node();
