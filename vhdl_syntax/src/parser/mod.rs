@@ -44,6 +44,10 @@ impl<T: TokenStream> Parser<T> {
         &self.diagnostics
     }
 
+    pub fn token_index(&self) -> usize {
+        self.builder.current_token_index()
+    }
+
     /// Parses a design file and returns the root node.
     pub(crate) fn parse(mut self) -> (SyntaxNode, Vec<diagnostics::ParserDiagnostic>) {
         self.design_file();

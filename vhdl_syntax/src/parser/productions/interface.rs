@@ -87,12 +87,109 @@ impl<T: TokenStream> Parser<T> {
             Keyword(Kw::Linkage),
         ]);
     }
+
+    pub fn association_list(&mut self) {
+        self.association_list_bounded(usize::MAX);
+    }
+    fn association_list_bounded(&mut self, max_index: usize) {
+        self.start_node(AssociationList);
+        self.separated_list(
+            |parser| {
+                let end_of_element_idx =
+                    match parser.lookahead_max_token_index(max_index, [Comma, RightPar]) {
+                        Ok((_, idx)) => idx,
+                        Err((_, idx)) => idx,
+                    };
+                parser.association_element_bounded(end_of_element_idx);
+            },
+            Comma,
+        );
+        self.end_node();
+    }
+
+    fn association_element_bounded(&mut self, max_index: usize) {
+        self.start_node(AssociationElement);
+
+        // TODO: Error handling is done at a bare minimum.
+        if let Ok(_) = self.lookahead_max_token_index(max_index, [RightArrow]) {
+            self.formal_part();
+            self.expect_token(RightArrow);
+        }
+        self.actual_part_bounded(max_index);
+
+        self.end_node();
+    }
+
+    pub fn formal_part(&mut self) {
+        self.start_node(FormalPart);
+        self.name();
+        // Note: `self.name()` will already consume any trailing parenthesized names!
+        self.end_node();
+    }
+
+    fn actual_part_bounded(&mut self, max_index: usize) {
+        self.start_node(ActualPart);
+        // Parsing of `actual_part` would boil down to `name | expression | subtype_indication`
+        self.start_node(RawTokens);
+        self.skip_to(max_index);
+        self.end_node();
+        self.end_node();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::parser::test_utils::check;
     use crate::parser::Parser;
+
+    #[test]
+    fn association_list() {
+        check(
+            Parser::association_list,
+            "arg1, arg2",
+            "\
+AssociationList
+  AssociationElement
+    ActualPart
+      RawTokens
+        Identifier 'arg1'
+  Comma
+  AssociationElement
+    ActualPart
+      RawTokens
+        Identifier 'arg2'
+",
+        );
+
+        check(
+            Parser::association_list,
+            "p1 => 1, std_ulogic(p2)=>     sl_sig",
+            "\
+AssociationList
+  AssociationElement
+    FormalPart
+      Name
+        Identifier 'p1'
+    RightArrow
+    ActualPart
+      RawTokens
+        AbstractLiteral
+  Comma
+  AssociationElement
+    FormalPart
+      Name
+        Identifier 'std_ulogic'
+        RawTokens
+          LeftPar
+          Identifier 'p2'
+          RightPar
+    RightArrow
+    ActualPart
+      RawTokens
+        Identifier 'sl_sig'
+",
+        );
+    }
 
     #[test]
     fn empty_generic_clause() {
