@@ -164,15 +164,23 @@ impl Parser {
             Keyword(Kw::Case) => self.case_generate_statement(),
             Keyword(Kw::Assert) => self.concurrent_assertion_statement(),
             Keyword(Kw::With) => self.concurrent_selected_signal_assignment(),
-            Identifier | LtLt | StringLiteral | CharacterLiteral => {
+            Identifier | LtLt | StringLiteral | CharacterLiteral | LeftPar => {
                 let checkpoint = self.checkpoint();
                 self.opt_label();
                 self.opt_token(Keyword(Kw::Postponed));
                 let checkpoint2 = self.checkpoint();
-                self.name();
+
+                let kind;
+                if self.peek_token() == LeftPar {
+                    self.aggregate();
+                    kind = AggregateTarget;
+                } else {
+                    self.name();
+                    kind = NameTarget;
+                }
                 match self.peek_token() {
                     LTE => {
-                        self.start_node_at(checkpoint2, NameTarget);
+                        self.start_node_at(checkpoint2, kind);
                         self.end_node();
                         self.skip();
                         self.opt_token(Keyword(Kw::Guarded));
@@ -662,6 +670,11 @@ end process main;",
     #[test]
     fn concurrent_signal_assignment() {
         insta::assert_snapshot!(stmt_to_test_text("foo <= bar(2 to 3);",));
+    }
+
+    #[test]
+    fn concurrent_signal_assignment_aggregate() {
+        insta::assert_snapshot!(stmt_to_test_text("(lorem, foo) <= bar(2 to 3);",));
     }
 
     #[test]

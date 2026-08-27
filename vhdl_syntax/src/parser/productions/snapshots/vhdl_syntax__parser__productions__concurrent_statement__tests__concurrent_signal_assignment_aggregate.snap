@@ -1,0 +1,43 @@
+---
+source: vhdl_syntax/src/parser/productions/concurrent_statement.rs
+assertion_line: 677
+expression: "stmt_to_test_text(\"(lorem, foo) <= bar(2 to 3);\",)"
+---
+ConcurrentSimpleSignalAssignment
+  AggregateTarget
+    Aggregate
+      LeftPar
+      ElementAssociationList
+        ElementAssociation
+          NameExpression
+            Name
+              NameDesignatorPrefix
+                Identifier 'lorem'
+        Comma
+        ElementAssociation
+          NameExpression
+            Name
+              NameDesignatorPrefix
+                Identifier 'foo'
+      RightPar
+  LTE
+  WaveformElements
+    WaveformElement
+      NameExpression
+        Name
+          NameDesignatorPrefix
+            Identifier 'bar'
+          ParenthesizedName
+            LeftPar
+            AssociationList
+              AssociationElement
+                ActualPart
+                  ActualPartExpression
+                    BinaryExpression
+                      LiteralExpression
+                        AbstractLiteral '2'
+                      Keyword(To)
+                      LiteralExpression
+                        AbstractLiteral '3'
+            RightPar
+  SemiColon
